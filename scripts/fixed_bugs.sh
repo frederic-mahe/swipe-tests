@@ -385,6 +385,46 @@ if [[ "${SWIPE_HAS_ASAN}" == "true" ]] ; then
     unset DB MATRIX
 fi
 
+## KI-24: the dump of a translated database (--symtype 3 or 4)
+## printed the translation of the first frame with the nucleotide
+## alphabet ('###'). The nucleotide sequence is now dumped
+DESCRIPTION="KI-24: dump with --symtype 3 prints the nucleotide sequence"
+DB=$(printf ">s1\nACGTACGTAC\n" | make_db nucl)
+"${SWIPE}" \
+    --db "${DB}" \
+    --symtype 3 \
+    --dump 1 < /dev/null | \
+    tail -n 1 | \
+    grep -qx "ACGTACGTAC" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-24: dump with --symtype 4 prints the nucleotide sequence"
+DB=$(printf ">s1\nACGTACGTAC\n" | make_db nucl)
+"${SWIPE}" \
+    --db "${DB}" \
+    --symtype 4 \
+    --dump 1 < /dev/null | \
+    tail -n 1 | \
+    grep -qx "ACGTACGTAC" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-24: dumps with --symtype 0, 3 and 4 are identical (ambiguous nucleotides)"
+DB=$(printf ">s1\nACGTACGTAC\n>s2\nACGTNNRYACGTTTGA\n" | make_db nucl)
+DUMP0=$("${SWIPE}" --db "${DB}" --symtype 0 --dump 1 < /dev/null)
+DUMP3=$("${SWIPE}" --db "${DB}" --symtype 3 --dump 1 < /dev/null)
+DUMP4=$("${SWIPE}" --db "${DB}" --symtype 4 --dump 1 < /dev/null)
+[[ "${DUMP0}" == "${DUMP3}" && "${DUMP0}" == "${DUMP4}" ]] && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB DUMP0 DUMP3 DUMP4
+
 ## KI-28: search times were freed before they were printed in the
 ## ParAlign XML output (printf of a NULL pointer, "(null)" with glibc)
 DESCRIPTION="KI-28: ParAlign XML, search start time is a date"

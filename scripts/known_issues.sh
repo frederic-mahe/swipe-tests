@@ -606,35 +606,6 @@ printf ">q1\nMKV\n" | \
 remove_db "${DB}"
 unset DB
 
-## KI-24: the dump of a translated database (--symtype 3 or 4)
-## prints the translation of the first frame with the nucleotide
-## alphabet
-DESCRIPTION="KI-24: dump with --symtype 3 prints '#' characters"
-DB=$(printf ">s1\nACGTACGTAC\n" | make_db nucl)
-"${SWIPE}" \
-    --db "${DB}" \
-    --symtype 3 \
-    --dump 1 < /dev/null | \
-    tail -n 1 | \
-    grep -qx "###" && \
-    success "${DESCRIPTION}" || \
-        failure "${DESCRIPTION}"
-remove_db "${DB}"
-unset DB
-
-DESCRIPTION="KI-24: dump with --symtype 4 prints '#' characters"
-DB=$(printf ">s1\nACGTACGTAC\n" | make_db nucl)
-"${SWIPE}" \
-    --db "${DB}" \
-    --symtype 4 \
-    --dump 1 < /dev/null | \
-    tail -n 1 | \
-    grep -qx "###" && \
-    success "${DESCRIPTION}" || \
-        failure "${DESCRIPTION}"
-remove_db "${DB}"
-unset DB
-
 ## KI-25: taxids are stored in a bitmap of taxid / 8 bytes, and
 ## negative values are read as huge unsigned values (ASAN_OPTIONS
 ## makes a sanitizer build behave as a release build)

@@ -425,6 +425,99 @@ DUMP4=$("${SWIPE}" --db "${DB}" --symtype 4 --dump 1 < /dev/null)
 remove_db "${DB}"
 unset DB DUMP0 DUMP3 DUMP4
 
+## KI-27: special characters (& < > " ') were not escaped in XML
+## outputs
+DESCRIPTION="KI-27: XML, '&' and '<' in database descriptions are escaped"
+DB=$(printf ">s1 a&b<c\nMKV\n" | make_db prot -parse_seqids)
+printf ">q1\nMKV\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --outfmt 7 | \
+    grep -qx "      <name>lcl|s1 a&amp;b&lt;c</name>" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-27: XML, quotes and '>' in database descriptions are escaped"
+DB=$(printf ">s1 5'-3' \"x\" y>z\nMKV\n" | make_db prot -parse_seqids)
+printf ">q1\nMKV\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --outfmt 7 | \
+    grep -qx "      <name>lcl|s1 5&apos;-3&apos; &quot;x&quot; y&gt;z</name>" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-27: XML, '&' in the query id is escaped"
+DB=$(printf ">s1\nMKV\n" | make_db prot)
+printf ">q1&x\nMKV\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --outfmt 7 | \
+    grep -qx "      <query>q1&amp;x</query>" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-27: ParAlign XML, '&' and '<' in query descriptions are escaped"
+DB=$(printf ">s1\nMKV\n" | make_db prot)
+printf ">q1 a&b<c\nMKV\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --outfmt 99 | \
+    grep -q "<queryDescription>q1 a&amp;b&lt;c</queryDescription>" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-27: ParAlign XML, '&' in database descriptions is escaped"
+DB=$(printf ">s1 a&b\nMKV\n" | make_db prot)
+printf ">q1\nMKV\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --outfmt 99 | \
+    grep -q "<longVersionName>s1 a&amp;b</longVersionName>" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-27: ParAlign XML, short names are truncated to 35 characters before escaping"
+DB=$(printf ">s1 %s&b\nMKV\n" "$(printf "%031d" 0)" | make_db prot)
+printf ">q1\nMKV\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --outfmt 99 | \
+    grep -q "<shortVersionName>s1 $(printf "%031d" 0)&amp;</shortVersionName>" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-27: ParAlign XML, '&' in the database title is escaped"
+DB_DIR=$(mktemp -d)
+printf ">s1\nMKV\n" | \
+    makeblastdb \
+        -dbtype prot \
+        -blastdb_version 4 \
+        -in - \
+        -title "a&b" \
+        -out "${DB_DIR}/db" > /dev/null 2>&1
+printf ">q1\nMKV\n" | \
+    "${SWIPE}" \
+        --db "${DB_DIR}/db" \
+        --outfmt 99 | \
+    grep -q "<databaseDescription>a&amp;b</databaseDescription>" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+rm -rf "${DB_DIR}"
+unset DB_DIR
+
 ## KI-28: search times were freed before they were printed in the
 ## ParAlign XML output (printf of a NULL pointer, "(null)" with glibc)
 DESCRIPTION="KI-28: ParAlign XML, search start time is a date"

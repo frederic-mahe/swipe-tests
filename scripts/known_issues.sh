@@ -656,31 +656,6 @@ printf ">q1\nMKV\n>q2\nMKV\n" | \
 remove_db "${DB}"
 unset DB
 
-## KI-27: special characters are not escaped in XML outputs
-DESCRIPTION="KI-27: XML, '&' and '<' in descriptions are not escaped"
-DB=$(printf ">s1 a&b<c\nMKV\n" | make_db prot -parse_seqids)
-printf ">q1\nMKV\n" | \
-    "${SWIPE}" \
-        --db "${DB}" \
-        --outfmt 7 | \
-    grep -qx "      <name>lcl|s1 a&b<c</name>" && \
-    success "${DESCRIPTION}" || \
-        failure "${DESCRIPTION}"
-remove_db "${DB}"
-unset DB
-
-DESCRIPTION="KI-27: ParAlign XML, '&' and '<' in query descriptions are not escaped"
-DB=$(printf ">s1\nMKV\n" | make_db prot)
-printf ">q1 a&b<c\nMKV\n" | \
-    "${SWIPE}" \
-        --db "${DB}" \
-        --outfmt 99 | \
-    grep -q "<queryDescription>q1 a&b<c</queryDescription>" && \
-    success "${DESCRIPTION}" || \
-        failure "${DESCRIPTION}"
-remove_db "${DB}"
-unset DB
-
 ## KI-30: the ParAlign XML output describes sound queries as
 ## nucleotide queries, and prints an empty query sequence
 DESCRIPTION="KI-30: ParAlign XML, sound query described as nucleotides"

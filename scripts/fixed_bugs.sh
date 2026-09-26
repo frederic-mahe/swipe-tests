@@ -385,6 +385,45 @@ if [[ "${SWIPE_HAS_ASAN}" == "true" ]] ; then
     unset DB MATRIX
 fi
 
+## KI-28: search times were freed before they were printed in the
+## ParAlign XML output (printf of a NULL pointer, "(null)" with glibc)
+DESCRIPTION="KI-28: ParAlign XML, search start time is a date"
+DB=$(printf ">s1\nMKV\n" | make_db prot)
+printf ">q1\nMKV\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --outfmt 99 | \
+    grep -Eq "<searchStarted>[A-Z][a-z]{2}, [ 0-9]{2} [A-Z][a-z]{2} [0-9]{4} [0-9]{2}:[0-9]{2}:[0-9]{2} UTC</searchStarted>" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-28: ParAlign XML, search completion time is a date"
+DB=$(printf ">s1\nMKV\n" | make_db prot)
+printf ">q1\nMKV\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --outfmt 99 | \
+    grep -Eq "<searchCompleted>[A-Z][a-z]{2}, [ 0-9]{2} [A-Z][a-z]{2} [0-9]{4} [0-9]{2}:[0-9]{2}:[0-9]{2} UTC</searchCompleted>" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-28: ParAlign XML, search times are shown for every query"
+DB=$(printf ">s1\nMKV\n" | make_db prot)
+printf ">q1\nMKV\n>q2\nMKV\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --outfmt 99 | \
+    grep -c "<searchStarted>[A-Z]" | \
+    grep -qx "2" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
 ## KI-37: with --outfmt 7, hits shown without an alignment (beyond
 ## --num_alignments) reported an uninitialized <len> (0, a stale
 ## value, or garbage)

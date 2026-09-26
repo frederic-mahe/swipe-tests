@@ -710,32 +710,6 @@ printf ">q1 a&b<c\nMKV\n" | \
 remove_db "${DB}"
 unset DB
 
-## KI-28: search times are freed before they are printed in the
-## ParAlign XML output (printf of a NULL pointer, "(null)" with glibc)
-DESCRIPTION="KI-28: ParAlign XML, search start time is (null)"
-DB=$(printf ">s1\nMKV\n" | make_db prot)
-printf ">q1\nMKV\n" | \
-    "${SWIPE}" \
-        --db "${DB}" \
-        --outfmt 99 | \
-    grep -q "<searchStarted>(null)</searchStarted>" && \
-    success "${DESCRIPTION}" || \
-        failure "${DESCRIPTION}"
-remove_db "${DB}"
-unset DB
-
-DESCRIPTION="KI-28: ParAlign XML, search completion time is (null)"
-DB=$(printf ">s1\nMKV\n" | make_db prot)
-printf ">q1\nMKV\n" | \
-    "${SWIPE}" \
-        --db "${DB}" \
-        --outfmt 99 | \
-    grep -q "<searchCompleted>(null)</searchCompleted>" && \
-    success "${DESCRIPTION}" || \
-        failure "${DESCRIPTION}"
-remove_db "${DB}"
-unset DB
-
 ## KI-29: blastn minus-strand hits are stored with a minus database
 ## strand, but the ParAlign XML output reads the query strand
 DESCRIPTION="KI-29: ParAlign XML, blastn minus-strand hit reported as +"

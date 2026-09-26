@@ -621,21 +621,8 @@ printf ">q1 some description\nMKV\n" | \
 remove_db "${DB}"
 unset DB
 
-## Windows line endings: the carriage return is not removed from the
-## header, but is ignored in sequences
-DESCRIPTION="CRLF: carriage return is kept in the query id"
-DB=$(printf ">s1\nMKV\n" | make_db prot)
-printf ">q1\r\nMKV\r\n" | \
-    "${SWIPE}" \
-        --db "${DB}" \
-        --outfmt 8 | \
-    cut -f 1 | \
-    grep -qx $'q1\r' && \
-    success "${DESCRIPTION}" || \
-        failure "${DESCRIPTION}"
-remove_db "${DB}"
-unset DB
-
+## Windows line endings: the carriage return is removed from the
+## header (KI-21, see fixed_bugs.sh), and is ignored in sequences
 DESCRIPTION="CRLF: carriage return is ignored in sequences"
 DB=$(printf ">s1\nMKV\n" | make_db prot)
 printf ">q1\r\nMK\r\nV\r\n" | \

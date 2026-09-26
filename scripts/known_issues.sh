@@ -561,59 +561,6 @@ unset DB
 #                                                                             #
 #*****************************************************************************#
 
-## KI-16: query lines are read in chunks of 2,047 characters. For
-## headers longer than that, the rest of the header is read as
-## sequence (here "MKV" at the end of a 2,050-character header)
-DESCRIPTION="KI-16: long header spills into the sequence"
-DB=$(printf ">s1\nMKV\n" | make_db prot)
-printf ">%sMKV\n" "$(printf "%02046d" 0)" | \
-    "${SWIPE}" \
-        --db "${DB}" | \
-    grep -qx "Query length:      3 residues" && \
-    success "${DESCRIPTION}" || \
-        failure "${DESCRIPTION}"
-remove_db "${DB}"
-unset DB
-
-DESCRIPTION="KI-16: long header spills into the sequence (hit)"
-DB=$(printf ">s1\nMKV\n" | make_db prot)
-printf ">%sMKV\n" "$(printf "%02046d" 0)" | \
-    "${SWIPE}" \
-        --db "${DB}" \
-        --outfmt 8 | \
-    cut -f 3,4 | \
-    grep -qx "100.00	3" && \
-    success "${DESCRIPTION}" || \
-        failure "${DESCRIPTION}"
-remove_db "${DB}"
-unset DB
-
-## KI-17: a '>' at position 2,048 of a sequence line starts a new
-## query
-DESCRIPTION="KI-17: '>' at position 2,048 of a sequence line starts a query"
-DB=$(printf ">s1\nMKV\n" | make_db prot)
-printf ">q1\n%s>MKV\n" "$(printf "%02047d" 0 | tr "0" "A")" | \
-    "${SWIPE}" \
-        --db "${DB}" | \
-    grep -c "^Query length:" | \
-    grep -qx "2" && \
-    success "${DESCRIPTION}" || \
-        failure "${DESCRIPTION}"
-remove_db "${DB}"
-unset DB
-
-DESCRIPTION="KI-17: '>' elsewhere in a sequence line is skipped"
-DB=$(printf ">s1\nMKV\n" | make_db prot)
-printf ">q1\n%s>MKV\n" "$(printf "%02046d" 0 | tr "0" "A")" | \
-    "${SWIPE}" \
-        --db "${DB}" | \
-    grep -c "^Query length:" | \
-    grep -qx "1" && \
-    success "${DESCRIPTION}" || \
-        failure "${DESCRIPTION}"
-remove_db "${DB}"
-unset DB
-
 ## KI-19: characters are signed, bytes above 0x7f are negative
 ## indexes in the symbol tables
 if [[ "${SWIPE_HAS_ASAN}" == "true" ]] ; then
@@ -637,21 +584,6 @@ printf ">q1\tfoo bar\nMKV\n" | \
         --db "${DB}" \
         --outfmt 8 | \
     awk -F "\t" '{exit NF == 13 ? 0 : 1}' && \
-    success "${DESCRIPTION}" || \
-        failure "${DESCRIPTION}"
-remove_db "${DB}"
-unset DB
-
-## KI-21: carriage returns are not removed from headers
-DESCRIPTION="KI-21: CRLF line endings, query id ends with a carriage return"
-DB=$(printf ">s1\nMKV\n" | make_db prot)
-printf ">q1\r\nMKV\r\n" | \
-    "${SWIPE}" \
-        --db "${DB}" \
-        --outfmt 8 | \
-    cut -f 1 | \
-    od -c | \
-    grep -q "q   1  \\\\r" && \
     success "${DESCRIPTION}" || \
         failure "${DESCRIPTION}"
 remove_db "${DB}"

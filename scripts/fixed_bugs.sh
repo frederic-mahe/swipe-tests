@@ -105,6 +105,110 @@ repeat () {
 ## file TBD_20260926_potential_issues.md in the swipe repository)
 
 
+## KI-16: query lines were read in chunks of 2,047 characters, and
+## the rest of a longer header was read as sequence
+DESCRIPTION="KI-16: long header does not spill into the sequence"
+DB=$(printf ">s1\nMKV\n" | make_db prot)
+printf ">%sMKV\n" "$(printf "%02046d" 0)" | \
+    "${SWIPE}" \
+        --db "${DB}" | \
+    grep -qx "Query length:      0 residues" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-16: long header does not spill into the sequence (no hit)"
+DB=$(printf ">s1\nMKV\n" | make_db prot)
+printf ">%sMKV\n" "$(printf "%02046d" 0)" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --outfmt 8 | \
+    grep -q "." && \
+    failure "${DESCRIPTION}" || \
+        success "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-16: query id of 3,000 characters is reported whole"
+DB=$(printf ">s1\nMKV\n" | make_db prot)
+printf ">%s\nMKV\n" "$(printf "%03000d" 0)" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --outfmt 8 | \
+    cut -f 1 | \
+    grep -qx "$(printf "%03000d" 0)" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+## KI-17: a '>' at position 2,048 of a sequence line started a new
+## query
+DESCRIPTION="KI-17: '>' at position 2,048 of a sequence line is skipped"
+DB=$(printf ">s1\nMKV\n" | make_db prot)
+printf ">q1\n%s>MKV\n" "$(printf "%02047d" 0 | tr "0" "A")" | \
+    "${SWIPE}" \
+        --db "${DB}" | \
+    grep "^Query length:" | \
+    tr "\n" " " | \
+    grep -qx "Query length:      2050 residues " && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-17: '>' elsewhere in a sequence line is skipped"
+DB=$(printf ">s1\nMKV\n" | make_db prot)
+printf ">q1\n%s>MKV\n" "$(printf "%02046d" 0 | tr "0" "A")" | \
+    "${SWIPE}" \
+        --db "${DB}" | \
+    grep -c "^Query length:" | \
+    grep -qx "1" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+## KI-21: carriage returns were not removed from headers
+DESCRIPTION="KI-21: CRLF line endings, query id has no carriage return"
+DB=$(printf ">s1\nMKV\n" | make_db prot)
+printf ">q1\r\nMKV\r\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --outfmt 8 | \
+    cut -f 1 | \
+    grep -qx "q1" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-21: CRLF line endings, description has no carriage return"
+DB=$(printf ">s1\nMKV\n" | make_db prot)
+printf ">q1 desc\r\nMKV\r\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --outfmt 9 | \
+    grep -qx "# Query: q1 desc" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-21: CRLF line endings, empty first line is skipped"
+DB=$(printf ">s1\nMKV\n" | make_db prot)
+printf "\r\n>q1\r\nMKV\r\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --outfmt 8 | \
+    cut -f 1 | \
+    grep -qx "q1" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
 ## KI-18: an empty first line was read as an empty query, and the
 ## rest of the query file was silently ignored
 DESCRIPTION="KI-18: empty first line, all queries are searched"

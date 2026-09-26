@@ -97,6 +97,81 @@ repeat () {
 
 #*****************************************************************************#
 #                                                                             #
+#                           2.1.2 (in development)                            #
+#                                                                             #
+#*****************************************************************************#
+##
+## Known issues fixed after 2.1.1 (KI-N: see known_issues.sh and the
+## file TBD_20260926_potential_issues.md in the swipe repository)
+
+
+## KI-18: an empty first line was read as an empty query, and the
+## rest of the query file was silently ignored
+DESCRIPTION="KI-18: empty first line, all queries are searched"
+DB=$(printf ">s1\nMKV\n" | make_db prot)
+printf "\n>q1\nMKV\n>q2\nMKV\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --outfmt 8 | \
+    cut -f 1 | \
+    tr "\n" " " | \
+    grep -qx "q1 q2 " && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-18: empty first line, no empty query is reported"
+DB=$(printf ">s1\nMKV\n" | make_db prot)
+printf "\n>q1\nMKV\n>q2\nMKV\n" | \
+    "${SWIPE}" \
+        --db "${DB}" | \
+    grep "^Query length:" | \
+    tr "\n" " " | \
+    grep -qx "Query length:      3 residues Query length:      3 residues " && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-18: several empty first lines, all queries are searched"
+DB=$(printf ">s1\nMKV\n" | make_db prot)
+printf "\n\n\n>q1\nMKV\n>q2\nMKV\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --outfmt 8 | \
+    cut -f 1 | \
+    tr "\n" " " | \
+    grep -qx "q1 q2 " && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-18: a query file made of an empty line has no query"
+DB=$(printf ">s1\nMKV\n" | make_db prot)
+printf "\n" | \
+    "${SWIPE}" \
+        --db "${DB}" | \
+    grep -q "^Query length:" && \
+    failure "${DESCRIPTION}" || \
+        success "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-18: empty first line, exit status is 0"
+DB=$(printf ">s1\nMKV\n" | make_db prot)
+printf "\n>q1\nMKV\n" | \
+    "${SWIPE}" \
+        --db "${DB}" > /dev/null && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+
+#*****************************************************************************#
+#                                                                             #
 #      2.1.1 (2021-06-28): fix for very long header strings in databases      #
 #                                                                             #
 #*****************************************************************************#

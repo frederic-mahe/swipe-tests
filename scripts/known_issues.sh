@@ -614,43 +614,6 @@ printf ">q1\n%s>MKV\n" "$(printf "%02046d" 0 | tr "0" "A")" | \
 remove_db "${DB}"
 unset DB
 
-## KI-18: an empty first line is read as an empty query, and
-## stops the reading of the query file
-DESCRIPTION="KI-18: empty first line, no query is searched"
-DB=$(printf ">s1\nMKV\n" | make_db prot)
-printf "\n>q1\nMKV\n>q2\nMKV\n" | \
-    "${SWIPE}" \
-        --db "${DB}" \
-        --outfmt 8 | \
-    grep -q "." && \
-    failure "${DESCRIPTION}" || \
-        success "${DESCRIPTION}"
-remove_db "${DB}"
-unset DB
-
-DESCRIPTION="KI-18: empty first line, a single empty query is reported"
-DB=$(printf ">s1\nMKV\n" | make_db prot)
-printf "\n>q1\nMKV\n>q2\nMKV\n" | \
-    "${SWIPE}" \
-        --db "${DB}" | \
-    grep "^Query length:" | \
-    tr "\n" " " | \
-    grep -qx "Query length:      0 residues " && \
-    success "${DESCRIPTION}" || \
-        failure "${DESCRIPTION}"
-remove_db "${DB}"
-unset DB
-
-DESCRIPTION="KI-18: empty first line, exit status is 0"
-DB=$(printf ">s1\nMKV\n" | make_db prot)
-printf "\n>q1\nMKV\n" | \
-    "${SWIPE}" \
-        --db "${DB}" > /dev/null && \
-    success "${DESCRIPTION}" || \
-        failure "${DESCRIPTION}"
-remove_db "${DB}"
-unset DB
-
 ## KI-19: characters are signed, bytes above 0x7f are negative
 ## indexes in the symbol tables
 if [[ "${SWIPE_HAS_ASAN}" == "true" ]] ; then

@@ -710,49 +710,6 @@ printf ">q1 a&b<c\nMKV\n" | \
 remove_db "${DB}"
 unset DB
 
-## KI-29: blastn minus-strand hits are stored with a minus database
-## strand, but the ParAlign XML output reads the query strand
-DESCRIPTION="KI-29: ParAlign XML, blastn minus-strand hit reported as +"
-DB=$(printf ">s1\nAAAAAAAAAAAAAAAAAAAA\n" | make_db nucl)
-printf ">q1\nTTTTTTTTTTTTTTTTTTTT\n" | \
-    "${SWIPE}" \
-        --db "${DB}" \
-        --symtype 0 \
-        --strand 2 \
-        --outfmt 99 | \
-    grep -q "<shortVersionStrand>+</shortVersionStrand>" && \
-    success "${DESCRIPTION}" || \
-        failure "${DESCRIPTION}"
-remove_db "${DB}"
-unset DB
-
-DESCRIPTION="KI-29: ParAlign XML, blastn minus-strand hit on same strands"
-DB=$(printf ">s1\nAAAAAAAAAAAAAAAAAAAA\n" | make_db nucl)
-printf ">q1\nTTTTTTTTTTTTTTTTTTTT\n" | \
-    "${SWIPE}" \
-        --db "${DB}" \
-        --symtype 0 \
-        --strand 2 \
-        --outfmt 99 | \
-    grep -q "<alignmentMatchLocation>Matches on same strands.</alignmentMatchLocation>" && \
-    success "${DESCRIPTION}" || \
-        failure "${DESCRIPTION}"
-remove_db "${DB}"
-unset DB
-
-DESCRIPTION="KI-29: plain output, same blastn hit is on the minus strand"
-DB=$(printf ">s1\nAAAAAAAAAAAAAAAAAAAA\n" | make_db nucl)
-printf ">q1\nTTTTTTTTTTTTTTTTTTTT\n" | \
-    "${SWIPE}" \
-        --db "${DB}" \
-        --symtype 0 \
-        --strand 2 | \
-    grep -qx " Strand = Plus / Minus" && \
-    success "${DESCRIPTION}" || \
-        failure "${DESCRIPTION}"
-remove_db "${DB}"
-unset DB
-
 ## KI-30: the ParAlign XML output describes sound queries as
 ## nucleotide queries, and prints an empty query sequence
 DESCRIPTION="KI-30: ParAlign XML, sound query described as nucleotides"

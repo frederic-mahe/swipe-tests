@@ -424,6 +424,79 @@ printf ">q1\nMKV\n>q2\nMKV\n" | \
 remove_db "${DB}"
 unset DB
 
+## KI-29: blastn minus-strand hits are stored with a minus database
+## strand, but the ParAlign XML output read the query strand
+DESCRIPTION="KI-29: ParAlign XML, blastn minus-strand hit reported as -"
+DB=$(printf ">s1\nAAAAAAAAAAAAAAAAAAAA\n" | make_db nucl)
+printf ">q1\nTTTTTTTTTTTTTTTTTTTT\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --symtype 0 \
+        --strand 2 \
+        --outfmt 99 | \
+    grep -q "<shortVersionStrand>-</shortVersionStrand>" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-29: ParAlign XML, blastn minus-strand hit on complementary strands"
+DB=$(printf ">s1\nAAAAAAAAAAAAAAAAAAAA\n" | make_db nucl)
+printf ">q1\nTTTTTTTTTTTTTTTTTTTT\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --symtype 0 \
+        --strand 2 \
+        --outfmt 99 | \
+    grep -q "<alignmentMatchLocation>Matches on complementary strands.</alignmentMatchLocation>" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-29: plain output, same blastn hit is on the minus strand"
+DB=$(printf ">s1\nAAAAAAAAAAAAAAAAAAAA\n" | make_db nucl)
+printf ">q1\nTTTTTTTTTTTTTTTTTTTT\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --symtype 0 \
+        --strand 2 | \
+    grep -qx " Strand = Plus / Minus" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-29: ParAlign XML, blastn plus-strand hit reported as +"
+DB=$(printf ">s1\nAAAAAAAAAAAAAAAAAAAA\n" | make_db nucl)
+printf ">q1\nAAAAAAAAAAAAAAAAAAAA\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --symtype 0 \
+        --strand 1 \
+        --outfmt 99 | \
+    grep -q "<shortVersionStrand>+</shortVersionStrand>" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-29: ParAlign XML, blastn hits on both strands have distinct anchors"
+DB=$(printf ">s1\nACGTACGT\n" | make_db nucl)
+printf ">q1\nACGTACGT\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --symtype 0 \
+        --outfmt 99 | \
+    grep "<shortVersionAnchor>" | \
+    sort -u | \
+    wc -l | \
+    grep -qx " *2" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
 ## KI-37: with --outfmt 7, hits shown without an alignment (beyond
 ## --num_alignments) reported an uninitialized <len> (0, a stale
 ## value, or garbage)

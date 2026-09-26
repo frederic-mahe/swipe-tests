@@ -274,6 +274,56 @@ remove_db "${DB}"
 unset DB
 
 
+## KI-37: with --outfmt 7, hits shown without an alignment (beyond
+## --num_alignments) reported an uninitialized <len> (0, a stale
+## value, or garbage)
+DESCRIPTION="KI-37: --outfmt 7, hit without alignment reports its length"
+DB=$(printf ">s1\nMKVLL\n" | make_db prot)
+printf ">q1\nMKV\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --num_descriptions 1 \
+        --num_alignments 0 \
+        --outfmt 7 | \
+    grep -qx "      <len>5</len>" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-37: --outfmt 7, hits with and without alignment report their lengths"
+DB=$(printf ">s1\nMKVLL\n>s2\nMKVAAA\n" | make_db prot)
+printf ">q1\nMKV\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --num_descriptions 2 \
+        --num_alignments 1 \
+        --outfmt 7 | \
+    grep "<len>" | \
+    tr -d " \n" | \
+    grep -qx "<len>6</len><len>5</len>" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-37: --outfmt 7, blastn hit without alignment reports its length"
+DB=$(printf ">s1\nACGTACGTAC\n" | make_db nucl)
+printf ">q1\nACGTACGTAC\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --symtype 0 \
+        --strand 1 \
+        --num_descriptions 1 \
+        --num_alignments 0 \
+        --outfmt 7 | \
+    grep -qx "      <len>10</len>" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+
 #*****************************************************************************#
 #                                                                             #
 #      2.1.1 (2021-06-28): fix for very long header strings in databases      #

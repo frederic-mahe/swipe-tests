@@ -304,6 +304,26 @@ printf ">q1\nAAAA\n" | \
 remove_db "${DB}"
 unset DB
 
+## sequences longer than 1,000,000 nucleotides: the decompression
+## buffer is released after each translation (the database is large,
+## a high expect value threshold is needed)
+DESCRIPTION="tblastn: database sequence longer than 1,000,000 nucleotides"
+DB=$(printf ">n1\nGG%s%s\n" "ATGAAAGTTCTGGCTTGG" \
+            "$(printf "%01000000d" 0 | tr "0" "C")" | make_db nucl)
+printf ">q1\nMKVLAW\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --symtype 3 \
+        --evalue 1e6 \
+        --outfmt 8 | \
+    head -n 1 | \
+    cut -f 3-10 | \
+    grep -qx "100.00	6	0	0	1	6	3	20" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
 ## (only frame +3 has an expect value below 0.05)
 DESCRIPTION="tblastn: many database sequences (100)"
 DB=$(for ((i = 1 ; i <= 100 ; i++)) ; do

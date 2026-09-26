@@ -318,6 +318,25 @@ printf ">q1\nLJSKAT\n" | \
 remove_db "${DB}"
 unset DB
 
+## matrix files are read with the sound alphabet (J/J = 9 instead of
+## 5 with IDENTITY_5_1)
+DESCRIPTION="sound: matrix file (sound symbols)"
+DB=$(printf ">s1\nMKVLAW\n" | make_db prot)
+MATRIX=$(mktemp)
+printf "   J  K\nJ  9 -1\nK -1 7\n" > "${MATRIX}"
+printf ">q1\nJ\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --symtype 5 \
+        --matrix "${MATRIX}" \
+        --outfmt 7 | \
+    grep -qx "      <score>9</score>" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+rm -f "${MATRIX}"
+remove_db "${DB}"
+unset DB MATRIX
+
 ## see known_issues.sh for the ParAlign XML output
 
 

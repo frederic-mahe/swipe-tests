@@ -896,6 +896,22 @@ printf ">q1\nMKVLAAGIVGLLLAWKLMNPQRSTVWY\n" | \
 remove_db "${DB}"
 unset DB
 
+## low gap penalties: each isolated residue is aligned with a gap, the
+## alignment string is longer than 64 characters
+DESCRIPTION="gaps: many gaps (long alignment string)"
+DB=$(printf ">s1\n%s\n" "$(repeat WWWA 16)" | make_db prot)
+printf ">q1\n%s\n" "$(repeat W 48)" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --gapopen 1 \
+        --gapextend 1 \
+        --outfmt 7 | \
+    grep -qx "      <alignment>$(repeat M3I1 15)M3</alignment>" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
 ## high gap penalties: an ungapped alignment is better
 DESCRIPTION="gaps: high penalties prevent gaps (alignment string)"
 DB=$(printf ">s1\nMKVLAAGIVGLLLAWHHHHHKLMNPQRSTVWY\n" | make_db prot)

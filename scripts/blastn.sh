@@ -567,6 +567,53 @@ printf ">q1\nAAAACCCCGGGGTTTT\n" | \
 remove_db "${DB}"
 unset DB
 
+DESCRIPTION="strands: minus strand, score above 127 (16-bit search)"
+DB=$(printf ">s1\n%s\n" "$(printf "%0200d" 0 | tr "0" "A")" | make_db nucl)
+printf ">q1\n%s\n" "$(printf "%0200d" 0 | tr "0" "T")" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --symtype 0 \
+        --strand 2 \
+        --outfmt 7 | \
+    grep -qx "      <score>200</score>" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="strands: minus strand, score above 65,535 (63-bit search)"
+DB=$(printf ">s1\n%s\n" "$(printf "%0700d" 0 | tr "0" "A")" | make_db nucl)
+printf ">q1\n%s\n" "$(printf "%0700d" 0 | tr "0" "T")" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --symtype 0 \
+        --strand 2 \
+        --reward 100 \
+        --outfmt 8 | \
+    cut -f 9-11 | \
+    grep -qx "700	1	70000" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+## sequences longer than 1,000,000 nucleotides: the decompression
+## buffer is released after each use
+DESCRIPTION="strands: database sequence longer than 1,000,000 nucleotides"
+DB=$(printf ">s1\n%s%sACGG\n" "ACGTTGCAAGGCTTAACCGT" \
+            "$(printf "%01000000d" 0 | tr "0" "A")" | make_db nucl)
+printf ">q1\nACGTTGCAAGGCTTAACCGT\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --symtype 0 \
+        --outfmt 8 | \
+    cut -f 3-10 | \
+    grep -qx "100.00	20	0	0	1	20	1	20" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
 DESCRIPTION="strands: ambiguous nucleotides are complemented"
 DB=$(printf ">s1\nAAAAARRRRRAAAAA\n" | make_db nucl)
 printf ">q1\nTTTTTYYYYYTTTTT\n" | \
@@ -740,6 +787,22 @@ printf ">q1\nACGTACGTAC\n" | \
         --outfmt 8 | \
     cut -f 11 | \
     grep -qx "20" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="scores: --dbsize changes expect values"
+DB=$(printf ">s1\nACGTTGCAAGGCTTAACCGT\n" | make_db nucl)
+printf ">q1\nACGTTGCAAGGCTTAACCGT\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --symtype 0 \
+        --strand 1 \
+        --dbsize 1000000 \
+        --outfmt 8 | \
+    cut -f 11,12 | \
+    grep -qx "7.4e-06	40.1" && \
     success "${DESCRIPTION}" || \
         failure "${DESCRIPTION}"
 remove_db "${DB}"

@@ -471,6 +471,7 @@ gpp|GPP00001.1| gpp|GPP00001.1|
 nat|AAA00001.1| nat|AAA00001.1|
 gnl|mydb|id42 gnl|mydb|id42
 gnl|mydb|42 gnl|mydb|42
+lcl|123 lcl|123
 pat|US|1234567|1 pat|US|1234567|1
 bbs|123 bbs|123
 gim|123 gim|123
@@ -489,6 +490,52 @@ remove_db "${DB}"
 unset DB
 
 ## PDB identifiers: see known_issues.sh
+
+## corrupted header files: the header of ">gi|123 title" starts with
+## 30 80 30 80 a0 80 1a 05 "title" 00 00 a1 80 30 80 ab 80 02 01 7b:
+## the length of the title (05) is at offset 7, the length of the gi
+## number (01) is at offset 22
+DESCRIPTION="headers: illegal string length is rejected"
+DB=$(printf ">gi|123 title\nMKV\n" | make_db prot -parse_seqids)
+printf '\x85' | \
+    dd of="${DB}.phr" bs=1 seek=7 count=1 conv=notrunc 2> /dev/null
+printf ">q1\nMKV\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --outfmt 8 2>&1 > /dev/null | \
+    grep -qx "Error: illegal string length (85)." && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="headers: illegal integer length is rejected"
+DB=$(printf ">gi|123 title\nMKV\n" | make_db prot -parse_seqids)
+printf '\x05' | \
+    dd of="${DB}.phr" bs=1 seek=22 count=1 conv=notrunc 2> /dev/null
+printf ">q1\nMKV\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --outfmt 8 2>&1 > /dev/null | \
+    grep -qx "Illegal length of integer object (05)." && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="headers: corrupted header (error message)"
+DB=$(printf ">gi|123 title\nMKV\n" | make_db prot -parse_seqids)
+printf '\x05' | \
+    dd of="${DB}.phr" bs=1 seek=22 count=1 conv=notrunc 2> /dev/null
+printf ">q1\nMKV\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --outfmt 8 2>&1 > /dev/null | \
+    grep -qx "Error parsing binary ASN.1 in database sequence definition." && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
 
 
 #*****************************************************************************#

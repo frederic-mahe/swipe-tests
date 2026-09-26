@@ -27,6 +27,11 @@ success () {
 SWIPE=$(which swipe 2> /dev/null)
 [[ "${1}" ]] && SWIPE="${1}"
 
+## make the path absolute, as some tests change directory
+## (readlink -f is missing from older versions of macOS)
+[[ -x "${SWIPE}" ]] && \
+    SWIPE="$(cd "$(dirname "${SWIPE}")" && pwd)/$(basename "${SWIPE}")"
+
 DESCRIPTION="check if swipe is executable"
 [[ -x "${SWIPE}" ]] && \
     success "${DESCRIPTION}" || \

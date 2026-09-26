@@ -89,6 +89,13 @@ repeat () {
     done
 }
 
+## The sanitizer checks below need a binary built with the address
+## sanitizer (for instance with: make DEBUG=1). Against a release
+## binary the checks are skipped, not silently passed.
+SWIPE_HAS_ASAN=false
+ASAN_OPTIONS=help=1 "${SWIPE}" -h 2>&1 | \
+    grep -q "AddressSanitizer" && SWIPE_HAS_ASAN=true
+
 
 ## Regression tests for the bugs listed in the CHANGES file (swipe
 ## does not use GitHub issues). Tests are sorted by version, from the
@@ -273,6 +280,68 @@ printf "\n>q1\nMKV\n" | \
 remove_db "${DB}"
 unset DB
 
+
+## KI-19: characters are signed, and bytes above 0x7f were negative
+## indexes in the symbol tables (query and score matrix readers)
+DESCRIPTION="KI-19: byte 0xe9 in a query is skipped"
+DB=$(printf ">s1\nMKV\n" | make_db prot)
+printf ">q1\nMK\351V\n" | \
+    "${SWIPE}" \
+        --db "${DB}" 2> /dev/null | \
+    grep -qx "Query length:      3 residues" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-19: byte 0xe9 in a score matrix file is ignored"
+DB=$(printf ">s1\nW\n" | make_db prot)
+MATRIX=$(mktemp)
+printf "   A  W \351\nA  5 -3 1\nW -3 20 1\n\351 1 1 1\n" > "${MATRIX}"
+printf ">q1\nWAW\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --matrix "${MATRIX}" \
+        --gapopen 10 \
+        --gapextend 1 \
+        --outfmt 7 2> /dev/null | \
+    grep -qx "      <score>20</score>" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+rm -f "${MATRIX}"
+remove_db "${DB}"
+unset DB MATRIX
+
+if [[ "${SWIPE_HAS_ASAN}" == "true" ]] ; then
+    DESCRIPTION="KI-19: byte 0xe9 in a query, no out-of-bounds read (ASan)"
+    DB=$(printf ">s1\nMKV\n" | make_db prot)
+    printf ">q1\nMK\351V\n" | \
+        "${SWIPE}" \
+            --db "${DB}" 2>&1 > /dev/null | \
+        grep -q "ERROR: AddressSanitizer" && \
+        failure "${DESCRIPTION}" || \
+            success "${DESCRIPTION}"
+    remove_db "${DB}"
+    unset DB
+
+    DESCRIPTION="KI-19: byte 0xe9 in a score matrix file, no out-of-bounds read (ASan)"
+    DB=$(printf ">s1\nW\n" | make_db prot)
+    MATRIX=$(mktemp)
+    printf "   A  W \351\nA  5 -3 1\nW -3 20 1\n\351 1 1 1\n" > "${MATRIX}"
+    printf ">q1\nWAW\n" | \
+        "${SWIPE}" \
+            --db "${DB}" \
+            --matrix "${MATRIX}" \
+            --gapopen 10 \
+            --gapextend 1 \
+            --outfmt 7 2>&1 > /dev/null | \
+        grep -q "ERROR: AddressSanitizer" && \
+        failure "${DESCRIPTION}" || \
+            success "${DESCRIPTION}"
+    rm -f "${MATRIX}"
+    remove_db "${DB}"
+    unset DB MATRIX
+fi
 
 ## KI-37: with --outfmt 7, hits shown without an alignment (beyond
 ## --num_alignments) reported an uninitialized <len> (0, a stale

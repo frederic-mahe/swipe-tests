@@ -561,21 +561,6 @@ unset DB
 #                                                                             #
 #*****************************************************************************#
 
-## KI-19: characters are signed, bytes above 0x7f are negative
-## indexes in the symbol tables
-if [[ "${SWIPE_HAS_ASAN}" == "true" ]] ; then
-    DESCRIPTION="KI-19: byte 0xe9 in a query (ASan global-buffer-overflow)"
-    DB=$(printf ">s1\nMKV\n" | make_db prot)
-    printf ">q1\nMK\351V\n" | \
-        "${SWIPE}" \
-            --db "${DB}" 2>&1 > /dev/null | \
-        grep -q "ERROR: AddressSanitizer: global-buffer-overflow" && \
-        success "${DESCRIPTION}" || \
-            failure "${DESCRIPTION}"
-    remove_db "${DB}"
-    unset DB
-fi
-
 ## KI-20: only spaces end the query id, tabs are kept
 DESCRIPTION="KI-20: a tab in the query header adds a column to TSV output"
 DB=$(printf ">s1\nMKV\n" | make_db prot)

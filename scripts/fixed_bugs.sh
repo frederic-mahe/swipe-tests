@@ -385,6 +385,81 @@ if [[ "${SWIPE_HAS_ASAN}" == "true" ]] ; then
     unset DB MATRIX
 fi
 
+## KI-22: PDB identifiers written by recent versions of makeblastdb
+## contain a chain-id field (0xA3), unknown to the ASN.1 parser (fatal
+## error). The chain-id is now read, and shown as is (as by BLAST+)
+DESCRIPTION="KI-22: PDB identifiers, search succeeds"
+DB=$(printf ">pdb|1ABC|A chain A\nMKV\n" | make_db prot -parse_seqids)
+printf ">q1\nMKV\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --outfmt 8 > /dev/null 2>&1 && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-22: PDB identifiers, tabular output shows the PDB id"
+DB=$(printf ">pdb|1ABC|A chain A\nMKV\n" | make_db prot -parse_seqids)
+printf ">q1\nMKV\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --outfmt 8 | \
+    cut -f 2 | \
+    grep -qx "pdb|1ABC|A" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-22: PDB identifiers, dump shows the PDB id and the title"
+DB=$(printf ">pdb|1ABC|A chain A\nMKV\n" | make_db prot -parse_seqids)
+"${SWIPE}" \
+    --db "${DB}" \
+    --dump 1 < /dev/null | \
+    head -n 1 | \
+    grep -qx ">pdb|1ABC|A chain A" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-22: PDB identifiers, lowercase chain is shown as is"
+DB=$(printf ">pdb|2DEF|b chain b\nMKV\n" | make_db prot -parse_seqids)
+"${SWIPE}" \
+    --db "${DB}" \
+    --dump 1 < /dev/null | \
+    head -n 1 | \
+    grep -qx ">pdb|2DEF|b chain b" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-22: PDB identifiers, multi-character chains are shown as is"
+DB=$(printf ">pdb|3GHI|AA chain AA\nMKV\n>pdb|4JKL|Lb chain Lb\nMKV\n" | make_db prot -parse_seqids)
+"${SWIPE}" \
+    --db "${DB}" \
+    --dump 1 < /dev/null | \
+    grep ">" | \
+    tr "\n" " " | \
+    grep -qx ">pdb|3GHI|AA chain AA >pdb|4JKL|Lb chain Lb " && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-22: PDB identifiers, plain output shows the PDB id"
+DB=$(printf ">pdb|1ABC|A chain A\nMKV\n" | make_db prot -parse_seqids)
+printf ">q1\nMKV\n" | \
+    "${SWIPE}" \
+        --db "${DB}" | \
+    grep -q "^>pdb|1ABC|A chain A" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
 ## KI-24: the dump of a translated database (--symtype 3 or 4)
 ## printed the translation of the first frame with the nucleotide
 ## alphabet ('###'). The nucleotide sequence is now dumped

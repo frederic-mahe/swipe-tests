@@ -554,31 +554,6 @@ unset DB
 #                                                                             #
 #*****************************************************************************#
 
-## KI-22: PDB identifiers written by recent versions of makeblastdb
-## contain a chain-id field (0xA3), unknown to the ASN.1 parser
-DESCRIPTION="KI-22: PDB identifiers (fatal ASN.1 parsing error)"
-DB=$(printf ">pdb|1ABC|A chain A\nMKV\n" | make_db prot -parse_seqids)
-printf ">q1\nMKV\n" | \
-    "${SWIPE}" \
-        --db "${DB}" \
-        --outfmt 8 2>&1 > /dev/null | \
-    grep -qx "Error parsing binary ASN.1 in database sequence definition." && \
-    success "${DESCRIPTION}" || \
-        failure "${DESCRIPTION}"
-remove_db "${DB}"
-unset DB
-
-DESCRIPTION="KI-22: PDB identifiers (unexpected object 0xa3)"
-DB=$(printf ">pdb|1ABC|A chain A\nMKV\n" | make_db prot -parse_seqids)
-"${SWIPE}" \
-    --db "${DB}" \
-    --dump 1 < /dev/null 2>&1 > /dev/null | \
-    grep -qx "Unexpected object a3, expected  0." && \
-    success "${DESCRIPTION}" || \
-        failure "${DESCRIPTION}"
-remove_db "${DB}"
-unset DB
-
 ## KI-23: the size of the index file is not checked: a truncated
 ## file is read beyond its end (zeros in the last memory page)
 DESCRIPTION="KI-23: truncated index file is accepted (empty database)"

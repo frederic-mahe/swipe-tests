@@ -112,6 +112,48 @@ ASAN_OPTIONS=help=1 "${SWIPE}" -h 2>&1 | \
 ## file TBD_20260926_potential_issues.md in the swipe repository)
 
 
+## KI-10: with -v 0 and -b 0, the hit list had no room and its last
+## entry (index -1) was read
+DESCRIPTION="KI-10: -v 0 -b 0 reports no hits"
+DB=$(printf ">s1\nMKV\n" | make_db prot)
+printf ">q1\nMKV\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --num_descriptions 0 \
+        --num_alignments 0 2> /dev/null | \
+    grep -qx "No hits." && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-10: -v 0 -b 0 exit status is 0"
+DB=$(printf ">s1\nMKV\n" | make_db prot)
+printf ">q1\nMKV\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --num_descriptions 0 \
+        --num_alignments 0 > /dev/null 2>&1 && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+if [[ "${SWIPE_HAS_ASAN}" == "true" ]] ; then
+    DESCRIPTION="KI-10: -v 0 -b 0, no heap buffer overflow (ASan)"
+    DB=$(printf ">s1\nMKV\n" | make_db prot)
+    printf ">q1\nMKV\n" | \
+        "${SWIPE}" \
+            --db "${DB}" \
+            --num_descriptions 0 \
+            --num_alignments 0 2>&1 > /dev/null | \
+        grep -q "ERROR: AddressSanitizer" && \
+        failure "${DESCRIPTION}" || \
+            success "${DESCRIPTION}"
+    remove_db "${DB}"
+    unset DB
+fi
+
 ## KI-16: query lines were read in chunks of 2,047 characters, and
 ## the rest of a longer header was read as sequence
 DESCRIPTION="KI-16: long header does not spill into the sequence"

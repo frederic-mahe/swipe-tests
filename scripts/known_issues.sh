@@ -66,16 +66,6 @@ remove_db () {
     rm -rf "$(dirname "${1}")"
 }
 
-## The sanitizer checks below need a binary built with the address
-## sanitizer (for instance with: make CXXFLAGS="-g -O1
-## -fsanitize=address,undefined" LINKFLAGS="-fsanitize=address,undefined").
-## Against a release binary the checks are skipped, not silently
-## passed.
-SWIPE_HAS_ASAN=false
-ASAN_OPTIONS=help=1 "${SWIPE}" -h 2>&1 | \
-    grep -q "AddressSanitizer" && SWIPE_HAS_ASAN=true
-
-
 ## These tests pin the current behaviour of swipe 2.1.1 in situations
 ## that are, or look like, bugs. Each test is expected to fail once
 ## the corresponding issue is fixed: the test should then be updated
@@ -305,23 +295,6 @@ unset DB
 #                       search engines and score ranges                       #
 #                                                                             #
 #*****************************************************************************#
-
-## KI-10: with -v 0 and -b 0, the hit list has no room and the
-## last entry (index -1) is read
-if [[ "${SWIPE_HAS_ASAN}" == "true" ]] ; then
-    DESCRIPTION="KI-10: -v 0 -b 0 heap buffer overflow (ASan)"
-    DB=$(printf ">s1\nMKV\n" | make_db prot)
-    printf ">q1\nMKV\n" | \
-        "${SWIPE}" \
-            --db "${DB}" \
-            --num_descriptions 0 \
-            --num_alignments 0 2>&1 > /dev/null | \
-        grep -q "ERROR: AddressSanitizer: heap-buffer-overflow" && \
-        success "${DESCRIPTION}" || \
-            failure "${DESCRIPTION}"
-    remove_db "${DB}"
-    unset DB
-fi
 
 ## KI-11: the 7-bit search engine receives gap penalties as
 ## 8-bit values: the sum of gap open and gap extension penalties

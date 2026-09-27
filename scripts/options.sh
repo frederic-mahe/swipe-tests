@@ -762,27 +762,28 @@ rm -f "${OUTPUT}"
 remove_db "${DB}"
 unset DB OUTPUT
 
-## the output file is opened before the other options are checked
-DESCRIPTION="--out is created even when other options are invalid"
+## the output file is opened once the other options are checked
+## (KI-8, see fixed_bugs.sh)
+DESCRIPTION="--out is not created when other options are invalid"
 OUTPUT=$(mktemp -u)
 "${SWIPE}" \
     --num_threads 0 \
     --out "${OUTPUT}" < /dev/null > /dev/null 2>&1
 [[ -e "${OUTPUT}" ]] && \
-    success "${DESCRIPTION}" || \
-        failure "${DESCRIPTION}"
+    failure "${DESCRIPTION}" || \
+        success "${DESCRIPTION}"
 rm -f "${OUTPUT}"
 unset OUTPUT
 
-DESCRIPTION="--out is truncated even when other options are invalid"
+DESCRIPTION="--out is not truncated when other options are invalid"
 OUTPUT=$(mktemp)
 printf "previous content\n" > "${OUTPUT}"
 "${SWIPE}" \
     --num_threads 0 \
     --out "${OUTPUT}" < /dev/null > /dev/null 2>&1
-[[ -s "${OUTPUT}" ]] && \
-    failure "${DESCRIPTION}" || \
-        success "${DESCRIPTION}"
+grep -qx "previous content" "${OUTPUT}" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
 rm -f "${OUTPUT}"
 unset OUTPUT
 

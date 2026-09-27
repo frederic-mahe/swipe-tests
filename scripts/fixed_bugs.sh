@@ -261,6 +261,49 @@ printf ">q1\nMKV\n" | \
 remove_db "${DB}"
 unset DB
 
+## KI-8: the output file was opened (and truncated) before the other
+## options were checked. It is now opened once all options are checked
+DESCRIPTION="KI-8: --out is not truncated when another option is invalid"
+OUTPUT=$(mktemp)
+printf "previous content\n" > "${OUTPUT}"
+"${SWIPE}" \
+    --out "${OUTPUT}" \
+    --outfmt 1 < /dev/null > /dev/null 2>&1
+grep -qx "previous content" "${OUTPUT}" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+rm -f "${OUTPUT}"
+unset OUTPUT
+
+DESCRIPTION="KI-8: --out is not truncated with an unknown matrix and no gap penalties"
+OUTPUT=$(mktemp)
+printf "previous content\n" > "${OUTPUT}"
+"${SWIPE}" \
+    --db missing_database \
+    --matrix unknown_matrix \
+    --out "${OUTPUT}" < /dev/null > /dev/null 2>&1
+grep -qx "previous content" "${OUTPUT}" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+rm -f "${OUTPUT}"
+unset OUTPUT
+
+DESCRIPTION="KI-8: --out is written when all options are valid"
+DB=$(printf ">s1\nMKV\n" | make_db prot)
+OUTPUT=$(mktemp)
+printf "previous content\n" > "${OUTPUT}"
+printf ">q1\nMKV\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --outfmt 8 \
+        --out "${OUTPUT}" > /dev/null 2>&1
+grep -q "^q1" "${OUTPUT}" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+rm -f "${OUTPUT}"
+remove_db "${DB}"
+unset DB OUTPUT
+
 ## KI-10: with -v 0 and -b 0, the hit list had no room and its last
 ## entry (index -1) was read
 DESCRIPTION="KI-10: -v 0 -b 0 reports no hits"

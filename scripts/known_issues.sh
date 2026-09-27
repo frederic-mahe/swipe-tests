@@ -188,20 +188,6 @@ printf ">q1\nMKVLAAGIVGLLLAW\n" | \
 remove_db "${DB}"
 unset DB
 
-## KI-8: the output file is opened (and truncated) before the
-## other options are checked
-DESCRIPTION="KI-8: --out is truncated when another option is invalid"
-OUTPUT=$(mktemp)
-printf "previous content\n" > "${OUTPUT}"
-"${SWIPE}" \
-    --out "${OUTPUT}" \
-    --outfmt 1 < /dev/null > /dev/null 2>&1
-[[ -s "${OUTPUT}" ]] && \
-    failure "${DESCRIPTION}" || \
-        success "${DESCRIPTION}"
-rm -f "${OUTPUT}"
-unset OUTPUT
-
 ## KI-9: numerical values are not validated (atol and atof)
 DESCRIPTION="KI-9: --num_threads 2abc is read as 2"
 DB=$(printf ">s1\nMKV\n" | make_db prot)

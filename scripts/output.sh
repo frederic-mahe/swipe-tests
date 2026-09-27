@@ -605,7 +605,8 @@ printf "MKVLAAGIVGLLLAW\n" | \
 remove_db "${DB}"
 unset DB
 
-## see known_issues.sh for several queries and special characters
+## see known_issues.sh (KI-26) for several queries, and fixed_bugs.sh
+## (KI-27) for special characters
 
 
 #*****************************************************************************#
@@ -1175,7 +1176,7 @@ printf ">q1\nACGTACGTAC\n" | \
 remove_db "${DB}"
 unset DB
 
-## see known_issues.sh for minus-strand hits
+## see fixed_bugs.sh (KI-29) for minus-strand hits
 
 DESCRIPTION="ParAlign XML: blastx search (query frame)"
 DB=$(printf ">p1\nMKVLAW\n" | make_db prot)
@@ -1284,7 +1285,7 @@ printf ">q1\nATGAAAGTTCTGGCTTGG\n" | \
 remove_db "${DB}"
 unset DB
 
-## see known_issues.sh for search times
+## see fixed_bugs.sh (KI-28) for search times
 
 
 #*****************************************************************************#

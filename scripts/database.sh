@@ -494,7 +494,7 @@ DB=$(printf ">sp|P12345|NAME_HUMAN some protein\nMKV\n" | make_db prot -parse_se
 remove_db "${DB}"
 unset DB
 
-## PDB identifiers: see known_issues.sh
+## PDB identifiers: see fixed_bugs.sh (KI-22)
 
 ## corrupted header files: the header of ">gi|123 title" starts with
 ## 30 80 30 80 a0 80 1a 05 "title" 00 00 a1 80 30 80 ab 80 02 01 7b:
@@ -849,8 +849,8 @@ DB=$(printf ">s1\nMKV\n" | make_db prot -parse_seqids -taxid 9606)
 remove_db "${DB}"
 unset DB
 
-## see known_issues.sh for dumps of translated databases (--symtype 3
-## and 4)
+## see fixed_bugs.sh (KI-24) for dumps of translated databases
+## (--symtype 3 and 4)
 
 
 #*****************************************************************************#

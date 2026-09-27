@@ -221,8 +221,8 @@ printf ">q1\n\nMK\n\nV\n\n" | \
 remove_db "${DB}"
 unset DB
 
-## a header of 2,047 characters (including '>') is read entirely,
-## longer headers spill into the sequence (see known_issues.sh)
+## a header of 2,047 characters (including '>') is read entirely
+## (see fixed_bugs.sh, KI-16, for longer headers)
 DESCRIPTION="query: header of 2,047 characters is not truncated"
 DB=$(printf ">s1\nMKV\n" | make_db prot)
 printf ">%s\nMKV\n" "$(printf "%02046d" 0)" | \
@@ -533,7 +533,7 @@ printf ">\nMKV\n" | \
 remove_db "${DB}"
 unset DB
 
-## see known_issues.sh for an empty first line
+## see fixed_bugs.sh (KI-18) for an empty first line
 DESCRIPTION="first line made of a space: queries are searched"
 DB=$(printf ">s1\nMKV\n" | make_db prot)
 printf " \n>q1\nMKV\n" | \
@@ -795,7 +795,7 @@ unset DB
 #                                                                             #
 #*****************************************************************************#
 
-## see known_issues.sh for bytes above 0x7f
+## see fixed_bugs.sh (KI-19) for bytes above 0x7f
 
 if [[ "${SWIPE_HAS_ASAN}" == "true" ]] ; then
     DESCRIPTION="ASan: multi-line and multi-query input (no error)"

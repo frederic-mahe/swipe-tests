@@ -1814,6 +1814,129 @@ printf ">q1\nACGTACGT\n" | \
 remove_db "${DB}"
 unset DB
 
+## KI-30: the ParAlign XML output described sound queries as
+## nucleotide queries, and printed an empty query sequence
+DESCRIPTION="KI-30: ParAlign XML, sound query described as sound"
+DB=$(printf ">s1\nMKVLAW\n" | make_db prot)
+printf ">q1\nLJSKAT\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --symtype 5 \
+        --outfmt 99 | \
+    grep -q "<querySequencetype>Sound</querySequencetype>" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-30: ParAlign XML, sound query sequence is shown"
+DB=$(printf ">s1\nMKVLAW\n" | make_db prot)
+printf ">q1\nLJSKAT\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --symtype 5 \
+        --outfmt 99 | \
+    grep -q "<querySequence>LJSKAT</querySequence>" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+## KI-31: ungapped and gapped statistical parameters were the same
+## variables in the ParAlign XML output. The ungapped values now come
+## from the ungapped rows of the NCBI tables
+DESCRIPTION="KI-31: ParAlign XML, BLOSUM62 ungapped lambda (0.3176)"
+DB=$(printf ">s1\nMKV\n" | make_db prot)
+printf ">q1\nMKV\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --outfmt 99 | \
+    grep -q "<ungappedLambda>0.3176</ungappedLambda>" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-31: ParAlign XML, BLOSUM62 ungapped kappa (0.134)"
+DB=$(printf ">s1\nMKV\n" | make_db prot)
+printf ">q1\nMKV\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --outfmt 99 | \
+    grep -q "<ungappedKappa>0.134</ungappedKappa>" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-31: ParAlign XML, BLOSUM62 ungapped eta (0.4012)"
+DB=$(printf ">s1\nMKV\n" | make_db prot)
+printf ">q1\nMKV\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --outfmt 99 | \
+    grep -q "<ungappedEta>0.4012</ungappedEta>" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-31: ParAlign XML, gapped lambda is not changed (0.267)"
+DB=$(printf ">s1\nMKV\n" | make_db prot)
+printf ">q1\nMKV\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --outfmt 99 | \
+    grep -q "<gappedLambda>0.267</gappedLambda>" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-31: ParAlign XML, blastn ungapped lambda (1/-3: 1.374)"
+DB=$(printf ">s1\nACGTACGT\n" | make_db nucl)
+printf ">q1\nACGTACGT\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --symtype 0 \
+        --gapopen 2 \
+        --gapextend 1 \
+        --outfmt 99 | \
+    grep -q "<ungappedLambda>1.374</ungappedLambda>" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+## KI-32: the query file name was always prefixed with "./". It is now
+## shown as given
+DESCRIPTION="KI-32: ParAlign XML, absolute query path is shown as is"
+DB=$(printf ">s1\nMKV\n" | make_db prot)
+QUERY=$(mktemp)
+printf ">q1\nMKV\n" > "${QUERY}"
+"${SWIPE}" \
+    --db "${DB}" \
+    --query "${QUERY}" \
+    --outfmt 99 | \
+    grep -qF "<queryFilename>${QUERY}</queryFilename>" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+rm -f "${QUERY}"
+remove_db "${DB}"
+unset DB QUERY
+
+DESCRIPTION="KI-32: ParAlign XML, standard input is shown as -"
+DB=$(printf ">s1\nMKV\n" | make_db prot)
+printf ">q1\nMKV\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --outfmt 99 | \
+    grep -qF "<queryFilename>-</queryFilename>" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
 ## KI-34: typo "Effecive" in the parameter block
 DESCRIPTION="KI-34: \"Effective db size\" is spelled correctly in the parameter block"
 DB=$(printf ">s1\nMKV\n" | make_db prot)

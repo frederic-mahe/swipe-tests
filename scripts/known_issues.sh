@@ -223,68 +223,6 @@ printf ">q1\nMKV\n>q2\nMKV\n" | \
 remove_db "${DB}"
 unset DB
 
-## KI-30: the ParAlign XML output describes sound queries as
-## nucleotide queries, and prints an empty query sequence
-DESCRIPTION="KI-30: ParAlign XML, sound query described as nucleotides"
-DB=$(printf ">s1\nMKVLAW\n" | make_db prot)
-printf ">q1\nLJSKAT\n" | \
-    "${SWIPE}" \
-        --db "${DB}" \
-        --symtype 5 \
-        --outfmt 99 | \
-    grep -q "<querySequencetype>Nucleotide</querySequencetype>" && \
-    success "${DESCRIPTION}" || \
-        failure "${DESCRIPTION}"
-remove_db "${DB}"
-unset DB
-
-DESCRIPTION="KI-30: ParAlign XML, sound query sequence is empty"
-DB=$(printf ">s1\nMKVLAW\n" | make_db prot)
-printf ">q1\nLJSKAT\n" | \
-    "${SWIPE}" \
-        --db "${DB}" \
-        --symtype 5 \
-        --outfmt 99 | \
-    grep -q "<querySequence></querySequence>" && \
-    success "${DESCRIPTION}" || \
-        failure "${DESCRIPTION}"
-remove_db "${DB}"
-unset DB
-
-## KI-31: ungapped and gapped statistical parameters are the same
-## variables in the ParAlign XML output
-DESCRIPTION="KI-31: ParAlign XML, ungapped lambda equals gapped lambda"
-DB=$(printf ">s1\nMKV\n" | make_db prot)
-printf ">q1\nMKV\n" | \
-    "${SWIPE}" \
-        --db "${DB}" \
-        --outfmt 99 | \
-    grep -E "<(un)?gappedLambda>" | \
-    sed 's/.*Lambda>\(.*\)<.*/\1/' | \
-    uniq | \
-    wc -l | \
-    grep -qx " *1" && \
-    success "${DESCRIPTION}" || \
-        failure "${DESCRIPTION}"
-remove_db "${DB}"
-unset DB
-
-## KI-32: the query file name is always prefixed with "./"
-DESCRIPTION="KI-32: ParAlign XML, absolute query path is prefixed with ./"
-DB=$(printf ">s1\nMKV\n" | make_db prot)
-QUERY=$(mktemp)
-printf ">q1\nMKV\n" > "${QUERY}"
-"${SWIPE}" \
-    --db "${DB}" \
-    --query "${QUERY}" \
-    --outfmt 99 | \
-    grep -qF "<queryFilename>.//" && \
-    success "${DESCRIPTION}" || \
-        failure "${DESCRIPTION}"
-rm -f "${QUERY}"
-remove_db "${DB}"
-unset DB QUERY
-
 ## KI-33: the search speed is a division by the elapsed time
 ## (zero for small searches) and by the query length (zero for empty
 ## queries)

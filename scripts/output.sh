@@ -1007,7 +1007,7 @@ while read -r ELEMENT ; do
     unset DB
 done <<EOF
 <programName>swipe</programName>
-<queryFilename>./-</queryFilename>
+<queryFilename>-</queryFilename>
 <querySequencetype>Amino Acid</querySequencetype>
 <queryDescription>q1 desc</queryDescription>
 <queryLength>15</queryLength>
@@ -1051,8 +1051,8 @@ done <<EOF
 EOF
 unset ELEMENT
 
-## the query file name is prefixed with "./", even for absolute paths
-DESCRIPTION="ParAlign XML: query file name is prefixed with ./"
+## the query file name is shown as given (KI-32, see fixed_bugs.sh)
+DESCRIPTION="ParAlign XML: query file name is shown as given"
 DB=$(make_output_db)
 QUERY=$(mktemp)
 printf ">q1\nMKV\n" > "${QUERY}"
@@ -1060,7 +1060,7 @@ printf ">q1\nMKV\n" > "${QUERY}"
     --db "${DB}" \
     --query "${QUERY}" \
     --outfmt 99 | \
-    grep -qF "<queryFilename>./${QUERY}</queryFilename>" && \
+    grep -qF "<queryFilename>${QUERY}</queryFilename>" && \
     success "${DESCRIPTION}" || \
         failure "${DESCRIPTION}"
 rm -f "${QUERY}"

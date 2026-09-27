@@ -223,31 +223,6 @@ printf ">q1\nMKV\n>q2\nMKV\n" | \
 remove_db "${DB}"
 unset DB
 
-## KI-33: the search speed is a division by the elapsed time
-## (zero for small searches) and by the query length (zero for empty
-## queries)
-DESCRIPTION="KI-33: speed is infinite for very short searches"
-DB=$(printf ">s1\nMKV\n" | make_db prot)
-printf ">q1\nMKV\n" | \
-    "${SWIPE}" \
-        --db "${DB}" | \
-    grep -qx "Speed:             inf GCUPS" && \
-    success "${DESCRIPTION}" || \
-        failure "${DESCRIPTION}"
-remove_db "${DB}"
-unset DB
-
-DESCRIPTION="KI-33: speed is not a number for empty queries"
-DB=$(printf ">s1\nMKV\n" | make_db prot)
-printf ">q1\n" | \
-    "${SWIPE}" \
-        --db "${DB}" | \
-    grep -Eqx "Speed: +-?nan GCUPS" && \
-    success "${DESCRIPTION}" || \
-        failure "${DESCRIPTION}"
-remove_db "${DB}"
-unset DB
-
 ## KI-36: with tblastn, the simple XML output reports the length
 ## of the translated database sequence (amino acids), other outputs
 ## report the length of the database sequence (nucleotides)

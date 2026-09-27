@@ -499,12 +499,13 @@ printf ">q1\n>q2\nMKV\n" | \
 remove_db "${DB}"
 unset DB
 
-DESCRIPTION="header only: speed is not a number"
+## no cells are computed: the speed is zero (KI-33, see fixed_bugs.sh)
+DESCRIPTION="header only: speed is zero"
 DB=$(printf ">s1\nMKV\n" | make_db prot)
 printf ">q1\n" | \
     "${SWIPE}" \
         --db "${DB}" | \
-    grep -Eqx "Speed: +-?nan GCUPS" && \
+    grep -Eqx "Speed: +0[.]000 GCUPS" && \
     success "${DESCRIPTION}" || \
         failure "${DESCRIPTION}"
 remove_db "${DB}"

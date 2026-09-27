@@ -178,13 +178,14 @@ printf ">q1\nMKVLAAGIVGLLLAW\n" | \
 remove_db "${DB}"
 unset DB
 
-## for tiny searches, the elapsed time is zero and the speed infinite
+## the elapsed time is measured with a monotonic clock; the speed is
+## "n/a" if no time elapsed (KI-33, see fixed_bugs.sh)
 DESCRIPTION="plain: search speed"
 DB=$(make_output_db)
 printf ">q1\nMKVLAAGIVGLLLAW\n" | \
     "${SWIPE}" \
         --db "${DB}" | \
-    grep -Eqx "Speed:             ([0-9]+[.][0-9]{3}|inf) GCUPS" && \
+    grep -Eqx "Speed:             ([0-9]+[.][0-9]{3} GCUPS|n/a)" && \
     success "${DESCRIPTION}" || \
         failure "${DESCRIPTION}"
 remove_db "${DB}"

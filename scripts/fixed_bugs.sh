@@ -1937,6 +1937,57 @@ printf ">q1\nMKV\n" | \
 remove_db "${DB}"
 unset DB
 
+## KI-33: the search speed was a division by the elapsed time,
+## measured in clock ticks with times() (zero for small searches:
+## "inf GCUPS"), and empty queries gave "nan GCUPS". The elapsed time
+## is now measured with a monotonic clock, and the speed is "n/a" when
+## no time elapsed
+DESCRIPTION="KI-33: speed is not infinite for very short searches"
+DB=$(printf ">s1\nMKV\n" | make_db prot)
+printf ">q1\nMKV\n" | \
+    "${SWIPE}" \
+        --db "${DB}" | \
+    grep -Eqx "Speed:             ([0-9]+[.][0-9]{3} GCUPS|n/a)" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-33: speed is zero for empty queries"
+DB=$(printf ">s1\nMKV\n" | make_db prot)
+printf ">q1\n" | \
+    "${SWIPE}" \
+        --db "${DB}" | \
+    grep -qx "Speed:             0.000 GCUPS" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-33: ParAlign XML, speed is not infinite for very short searches"
+DB=$(printf ">s1\nMKV\n" | make_db prot)
+printf ">q1\nMKV\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --outfmt 99 | \
+    grep -Eq "<searchSpeed>([0-9]+[.][0-9]{3} GCUPS|n/a)</searchSpeed>" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-33: sound queries, speed is not infinite"
+DB=$(printf ">s1\nMKVLAW\n" | make_db prot)
+printf ">q1\nLJSKAT\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --symtype 5 | \
+    grep -Eqx "Speed:             ([0-9]+[.][0-9]{3} GCUPS|n/a)" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
 ## KI-34: typo "Effecive" in the parameter block
 DESCRIPTION="KI-34: \"Effective db size\" is spelled correctly in the parameter block"
 DB=$(printf ">s1\nMKV\n" | make_db prot)

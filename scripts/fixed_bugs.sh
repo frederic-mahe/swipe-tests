@@ -628,6 +628,57 @@ printf ">q1\n%s>MKV\n" "$(printf "%02046d" 0 | tr "0" "A")" | \
 remove_db "${DB}"
 unset DB
 
+## KI-20: only spaces ended the query id, tabs were kept. Any
+## whitespace character now ends the query id
+DESCRIPTION="KI-20: a tab in the query header ends the query id (TSV has 12 columns)"
+DB=$(printf ">s1\nMKV\n" | make_db prot)
+printf ">q1\tfoo bar\nMKV\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --outfmt 8 | \
+    awk -F "\t" '{exit NF == 12 ? 0 : 1}' && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-20: a tab in the query header ends the query id (TSV query id)"
+DB=$(printf ">s1\nMKV\n" | make_db prot)
+printf ">q1\tfoo bar\nMKV\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --outfmt 8 | \
+    cut -f 1 | \
+    grep -qx "q1" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-20: a tab in the query header ends the query id (XML)"
+DB=$(printf ">s1\nMKV\n" | make_db prot)
+printf ">q1\tfoo bar\nMKV\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --outfmt 7 | \
+    grep -qx "      <query>q1</query>" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-20: a tab in the query header, TSV comment shows the whole header"
+DB=$(printf ">s1\nMKV\n" | make_db prot)
+printf ">q1\tfoo bar\nMKV\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --outfmt 9 | \
+    grep -qx "# Query: q1	foo bar" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
 ## KI-21: carriage returns were not removed from headers
 DESCRIPTION="KI-21: CRLF line endings, query id has no carriage return"
 DB=$(printf ">s1\nMKV\n" | make_db prot)

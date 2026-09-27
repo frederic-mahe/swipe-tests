@@ -595,15 +595,15 @@ printf "> q1\nMKV\n" | \
 remove_db "${DB}"
 unset DB
 
-## tab characters do not end the query id (see known_issues.sh)
-DESCRIPTION="query id: a tab does not end the query id"
+## tab characters end the query id (KI-20, see fixed_bugs.sh)
+DESCRIPTION="query id: a tab ends the query id"
 DB=$(printf ">s1\nMKV\n" | make_db prot)
 printf ">q1\tdescription\nMKV\n" | \
     "${SWIPE}" \
         --db "${DB}" \
         --outfmt 8 | \
-    cut -f 1,2 | \
-    grep -qx "q1	description" && \
+    cut -f 1 | \
+    grep -qx "q1" && \
     success "${DESCRIPTION}" || \
         failure "${DESCRIPTION}"
 remove_db "${DB}"

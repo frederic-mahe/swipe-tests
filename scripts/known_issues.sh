@@ -310,20 +310,6 @@ unset DB
 #                                                                             #
 #*****************************************************************************#
 
-## KI-20: only spaces end the query id, tabs are kept
-DESCRIPTION="KI-20: a tab in the query header adds a column to TSV output"
-DB=$(printf ">s1\nMKV\n" | make_db prot)
-printf ">q1\tfoo bar\nMKV\n" | \
-    "${SWIPE}" \
-        --db "${DB}" \
-        --outfmt 8 | \
-    awk -F "\t" '{exit NF == 13 ? 0 : 1}' && \
-    success "${DESCRIPTION}" || \
-        failure "${DESCRIPTION}"
-remove_db "${DB}"
-unset DB
-
-
 #*****************************************************************************#
 #                                                                             #
 #                                  databases                                  #

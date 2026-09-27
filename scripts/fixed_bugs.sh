@@ -1032,6 +1032,37 @@ printf ">q1\nACGTACGTAC\n" | \
 remove_db "${DB}"
 unset DB
 
+## KI-38: strings of the binary ASN.1 headers are read into a buffer
+## of 2,048 bytes; a string of 2,048 characters or more filled it,
+## and the terminating null byte was written one byte past its end
+## (then copied with strcpy into fields of the same size). Outputs
+## were not affected (titles longer than 2,048 characters are still
+## truncated, see database.sh). The overflow stays inside a structure,
+## ASan misses it: the check relies on UBSan (make DEBUG=1)
+if [[ "${SWIPE_HAS_ASAN}" == "true" ]] ; then
+    DESCRIPTION="KI-38: title of 2,048 characters, no out-of-bounds index (UBSan)"
+    DB=$(printf ">s1 %s\nMKV\n" "$(printf "%02045d" 0)" | make_db prot)
+    printf ">q1\nMKV\n" | \
+        "${SWIPE}" \
+            --db "${DB}" 2>&1 > /dev/null | \
+        grep -q "runtime error: index" && \
+        failure "${DESCRIPTION}" || \
+            success "${DESCRIPTION}"
+    remove_db "${DB}"
+    unset DB
+
+    DESCRIPTION="KI-38: title of 5,000 characters, dump, no out-of-bounds index (UBSan)"
+    DB=$(printf ">sp|P12345|NAME_HUMAN %s\nMKV\n" "$(printf "%05000d" 0)" | make_db prot -parse_seqids)
+    "${SWIPE}" \
+        --db "${DB}" \
+        --dump 1 2>&1 < /dev/null > /dev/null | \
+        grep -q "runtime error: index" && \
+        failure "${DESCRIPTION}" || \
+            success "${DESCRIPTION}"
+    remove_db "${DB}"
+    unset DB
+fi
+
 
 #*****************************************************************************#
 #                                                                             #

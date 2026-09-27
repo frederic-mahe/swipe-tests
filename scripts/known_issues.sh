@@ -289,6 +289,20 @@ printf ">q1\nMKV\n" | \
 remove_db "${DB}"
 unset DB
 
+## GitHub #9 (closed in 2014, but the parsing did not change): the
+## example of the issue
+DESCRIPTION="KI-9: --dbsize 7.06e+06 is read as 7 (GitHub #9)"
+DB=$(printf ">s1\nMKV\n" | make_db prot)
+printf ">q1\nMKV\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --dbsize 7.06e+06 | \
+    grep -qx "Effecive db size:  7" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
 
 #*****************************************************************************#
 #                                                                             #

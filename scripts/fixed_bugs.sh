@@ -97,9 +97,10 @@ ASAN_OPTIONS=help=1 "${SWIPE}" -h 2>&1 | \
     grep -q "AddressSanitizer" && SWIPE_HAS_ASAN=true
 
 
-## Regression tests for the bugs listed in the CHANGES file (swipe
-## does not use GitHub issues). Tests are sorted by version, from the
-## most recent to the oldest.
+## Regression tests for the bugs listed in the CHANGES file and in the
+## closed GitHub issues (https://github.com/torognes/swipe/issues,
+## "GitHub #N" in test descriptions). Tests are sorted by version,
+## from the most recent to the oldest.
 
 
 #*****************************************************************************#

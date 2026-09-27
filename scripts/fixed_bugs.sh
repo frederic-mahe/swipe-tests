@@ -1938,6 +1938,19 @@ printf ">q1\nLJSKAT\n" | \
 remove_db "${DB}"
 unset DB
 
+DESCRIPTION="KI-30: ParAlign XML, database of a sound search described as sound"
+DB=$(printf ">s1\nMKVLAW\n" | make_db prot)
+printf ">q1\nLJSKAT\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --symtype 5 \
+        --outfmt 99 | \
+    grep -q "<databaseSequencetype>Sound</databaseSequencetype>" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
 ## KI-31: ungapped and gapped statistical parameters were the same
 ## variables in the ParAlign XML output. The ungapped values now come
 ## from the ungapped rows of the NCBI tables

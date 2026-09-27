@@ -612,6 +612,46 @@ DB=$(printf ">s1 a<b>&c\"d'e\nMKV\n" | make_db prot)
 remove_db "${DB}"
 unset DB
 
+## in nr, identical sequences are merged into one entry with several
+## deflines (separated by control-A characters in makeblastdb's input,
+## see GitHub #4)
+DESCRIPTION="titles: entry with 3 deflines, tabular output shows the first"
+DB=$(printf ">sp|P1|A_HUMAN first\x01sp|P2|B_MOUSE second\x01sp|P3|C_RAT third\nMKVLAAGIVGLLLAW\n" | \
+         make_db prot -parse_seqids)
+printf ">q1\nMKVLAAGIVGLLLAW\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --outfmt 8 | \
+    grep -q "^q1	sp|P1|A_HUMAN	100.00	15	" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="titles: entry with 3 deflines, plain output shows the last"
+DB=$(printf ">sp|P1|A_HUMAN first\x01sp|P2|B_MOUSE second\x01sp|P3|C_RAT third\nMKVLAAGIVGLLLAW\n" | \
+         make_db prot -parse_seqids)
+printf ">q1\nMKVLAAGIVGLLLAW\n" | \
+    "${SWIPE}" \
+        --db "${DB}" | \
+    grep -qx " sp|P3|C_RAT third *" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="titles: entry with 3 deflines, dump shows them on one line"
+DB=$(printf ">sp|P1|A_HUMAN first\x01sp|P2|B_MOUSE second\x01sp|P3|C_RAT third\nMKVLAAGIVGLLLAW\n" | \
+         make_db prot -parse_seqids)
+"${SWIPE}" \
+    --db "${DB}" \
+    --dump 1 < /dev/null | \
+    grep -qx ">sp|P1|A_HUMAN first >sp|P2|B_MOUSE second >sp|P3|C_RAT third" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
 
 #*****************************************************************************#
 #                                                                             #

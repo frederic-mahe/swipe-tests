@@ -176,33 +176,6 @@ unset DB
 #                                                                             #
 #*****************************************************************************#
 
-## KI-23: the size of the index file is not checked: a truncated
-## file is read beyond its end (zeros in the last memory page)
-DESCRIPTION="KI-23: truncated index file is accepted (empty database)"
-DB=$(printf ">s1\nMKV\n" | make_db prot)
-head -c 4 "${DB}.pin" > "${DB}.tmp"
-mv "${DB}.tmp" "${DB}.pin"
-printf ">q1\nMKV\n" | \
-    "${SWIPE}" \
-        --db "${DB}" | \
-    grep -qx "Database size:     0 residues in 0 sequences" && \
-    success "${DESCRIPTION}" || \
-        failure "${DESCRIPTION}"
-remove_db "${DB}"
-unset DB
-
-DESCRIPTION="KI-23: truncated index file, exit status is 0"
-DB=$(printf ">s1\nMKV\n" | make_db prot)
-head -c 4 "${DB}.pin" > "${DB}.tmp"
-mv "${DB}.tmp" "${DB}.pin"
-printf ">q1\nMKV\n" | \
-    "${SWIPE}" \
-        --db "${DB}" > /dev/null 2>&1 && \
-    success "${DESCRIPTION}" || \
-        failure "${DESCRIPTION}"
-remove_db "${DB}"
-unset DB
-
 #*****************************************************************************#
 #                                                                             #
 #                               output formats                                #

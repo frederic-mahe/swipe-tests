@@ -1482,6 +1482,102 @@ printf ">q1\nMKV\n" | \
 remove_db "${DB}"
 unset DB
 
+## KI-23: the sizes of the database files were not checked: a
+## truncated index file was read beyond its end (zeros in the last
+## memory page: an empty database, exit status 0). The index header,
+## the offset tables and the offsets are now checked
+DESCRIPTION="KI-23: truncated index file (4 bytes) is rejected"
+DB=$(printf ">s1\nMKV\n" | make_db prot)
+head -c 4 "${DB}.pin" > "${DB}.tmp"
+mv "${DB}.tmp" "${DB}.pin"
+printf ">q1\nMKV\n" | \
+    "${SWIPE}" \
+        --db "${DB}" 2>&1 | \
+    grep -qx "Database index file ${DB}.pin is truncated or corrupted." && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-23: truncated index file, exit status is 1"
+DB=$(printf ">s1\nMKV\n" | make_db prot)
+head -c 4 "${DB}.pin" > "${DB}.tmp"
+mv "${DB}.tmp" "${DB}.pin"
+printf ">q1\nMKV\n" | \
+    "${SWIPE}" \
+        --db "${DB}" > /dev/null 2>&1
+(( $? == 1 )) && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-23: index file without its last byte is rejected"
+DB=$(printf ">s1\nMKV\n>s2\nMKVW\n" | make_db prot)
+SIZE=$(wc -c < "${DB}.pin")
+head -c $(( SIZE - 1 )) "${DB}.pin" > "${DB}.tmp"
+mv "${DB}.tmp" "${DB}.pin"
+printf ">q1\nMKV\n" | \
+    "${SWIPE}" \
+        --db "${DB}" 2>&1 | \
+    grep -qx "Database index file ${DB}.pin is truncated or corrupted." && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB SIZE
+
+DESCRIPTION="KI-23: nucleotide index file without its last byte is rejected"
+DB=$(printf ">s1\nACGTNACGT\n>s2\nACGT\n" | make_db nucl)
+SIZE=$(wc -c < "${DB}.nin")
+head -c $(( SIZE - 1 )) "${DB}.nin" > "${DB}.tmp"
+mv "${DB}.tmp" "${DB}.nin"
+printf ">q1\nACGT\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --symtype 0 2>&1 | \
+    grep -qx "Database index file ${DB}.nin is truncated or corrupted." && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB SIZE
+
+DESCRIPTION="KI-23: truncated header file is rejected"
+DB=$(printf ">s1\nMKV\n>s2\nMKVW\n" | make_db prot)
+head -c 10 "${DB}.phr" > "${DB}.tmp"
+mv "${DB}.tmp" "${DB}.phr"
+printf ">q1\nMKV\n" | \
+    "${SWIPE}" \
+        --db "${DB}" 2>&1 | \
+    grep -qx "Database header file ${DB}.phr is truncated or corrupted." && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-23: truncated sequence file is rejected"
+DB=$(printf ">s1\nMKV\n>s2\nMKVW\n" | make_db prot)
+head -c 3 "${DB}.psq" > "${DB}.tmp"
+mv "${DB}.tmp" "${DB}.psq"
+printf ">q1\nMKV\n" | \
+    "${SWIPE}" \
+        --db "${DB}" 2>&1 | \
+    grep -qx "Database sequence file ${DB}.psq is truncated or corrupted." && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-23: complete database files are accepted"
+DB=$(printf ">s1\nMKV\n>s2\nMKVW\n" | make_db prot)
+printf ">q1\nMKV\n" | \
+    "${SWIPE}" \
+        --db "${DB}" | \
+    grep -qx "Database size:     7 residues in 2 sequences" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
 ## KI-24: the dump of a translated database (--symtype 3 or 4)
 ## printed the translation of the first frame with the nucleotide
 ## alphabet ('###'). The nucleotide sequence is now dumped

@@ -89,7 +89,11 @@ than `A && B || C`.
 ### Testing instructions
 
 - create a new git branch, stemming from the `dev` branch, and using
-  the naming pattern `tmp_<topic>_$(date +%Y%m%d%H%M%S)`
+  the naming pattern `tmp_$(date +%Y%m%d%H%M%S)`. When the tests go
+  with a change in swipe (twin branches), both branches have **the
+  same name** in swipe and swipe-tests: the CI of swipe tests each
+  branch with the swipe-tests branch of the same name (or `dev` when
+  there is none)
 - run `bash ./scripts/<name>.sh ../swipe/swipe | grep "FAIL"` to run a
   test script
 - note that `failure()` exits the script — test sequences must be

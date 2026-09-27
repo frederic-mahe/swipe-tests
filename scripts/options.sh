@@ -1431,14 +1431,14 @@ printf ">q1\nMKV\n" | \
 remove_db "${DB}"
 unset DB
 
-## note the typo "Effecive"
+## the typo "Effecive" is fixed (KI-34, see fixed_bugs.sh)
 DESCRIPTION="--dbsize is reported in the parameter block"
 DB=$(printf ">s1\nMKV\n" | make_db prot)
 printf ">q1\nMKV\n" | \
     "${SWIPE}" \
         --db "${DB}" \
         --dbsize 1000 | \
-    grep -qx "Effecive db size:  1000" && \
+    grep -qx "Effective db size: 1000" && \
     success "${DESCRIPTION}" || \
         failure "${DESCRIPTION}"
 remove_db "${DB}"

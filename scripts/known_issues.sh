@@ -250,7 +250,7 @@ printf ">q1\nMKV\n" | \
     "${SWIPE}" \
         --db "${DB}" \
         --dbsize 1e6 | \
-    grep -qx "Effecive db size:  1" && \
+    grep -qx "Effective db size: 1" && \
     success "${DESCRIPTION}" || \
         failure "${DESCRIPTION}"
 remove_db "${DB}"
@@ -264,7 +264,7 @@ printf ">q1\nMKV\n" | \
     "${SWIPE}" \
         --db "${DB}" \
         --dbsize 7.06e+06 | \
-    grep -qx "Effecive db size:  7" && \
+    grep -qx "Effective db size: 7" && \
     success "${DESCRIPTION}" || \
         failure "${DESCRIPTION}"
 remove_db "${DB}"
@@ -475,19 +475,6 @@ printf ">q1\n" | \
     "${SWIPE}" \
         --db "${DB}" | \
     grep -Eqx "Speed: +-?nan GCUPS" && \
-    success "${DESCRIPTION}" || \
-        failure "${DESCRIPTION}"
-remove_db "${DB}"
-unset DB
-
-## KI-34: typo in the parameter block
-DESCRIPTION="KI-34: typo \"Effecive\" in the parameter block"
-DB=$(printf ">s1\nMKV\n" | make_db prot)
-printf ">q1\nMKV\n" | \
-    "${SWIPE}" \
-        --db "${DB}" \
-        --dbsize 100 | \
-    grep -q "^Effecive db size:" && \
     success "${DESCRIPTION}" || \
         failure "${DESCRIPTION}"
 remove_db "${DB}"

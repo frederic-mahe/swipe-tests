@@ -1165,6 +1165,19 @@ printf ">q1\nACGTACGT\n" | \
 remove_db "${DB}"
 unset DB
 
+## KI-34: typo "Effecive" in the parameter block
+DESCRIPTION="KI-34: \"Effective db size\" is spelled correctly in the parameter block"
+DB=$(printf ">s1\nMKV\n" | make_db prot)
+printf ">q1\nMKV\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --dbsize 100 | \
+    grep -qx "Effective db size: 100" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
 ## KI-35: the error message for a missing sequence file had an
 ## extra newline
 DESCRIPTION="KI-35: missing .psq file, error message has no extra empty line"
@@ -1818,7 +1831,7 @@ printf ">q1\nMKVLAAGIVGLLLAW\n" | \
     "${SWIPE}" \
         --db "${DB}" \
         -z 1000000 | \
-    grep -qx "Effecive db size:  1000000" && \
+    grep -qx "Effective db size: 1000000" && \
     success "${DESCRIPTION}" || \
         failure "${DESCRIPTION}"
 remove_db "${DB}"

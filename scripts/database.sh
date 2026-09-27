@@ -197,15 +197,16 @@ printf ">q1\nMKV\n" | \
 remove_db "${DB}"
 unset DB
 
-## the error message for the sequence file ends with two newlines
-DESCRIPTION="database: missing sequence file (.psq) (extra empty line)"
+## the error message for the sequence file ends with a single
+## newline (KI-35, see fixed_bugs.sh)
+DESCRIPTION="database: missing sequence file (.psq) (no extra empty line)"
 DB=$(printf ">s1\nMKV\n" | make_db prot)
 rm -f "${DB}.psq"
 printf ">q1\nMKV\n" | \
     "${SWIPE}" \
         --db "${DB}" 2>&1 | \
     wc -l | \
-    grep -qx " *2" && \
+    grep -qx " *1" && \
     success "${DESCRIPTION}" || \
         failure "${DESCRIPTION}"
 remove_db "${DB}"
@@ -1499,43 +1500,42 @@ printf ">q1\nMKV\n" | \
 remove_db "${DB}"
 unset DB
 
-## reading stops at the first non-numerical value
-DESCRIPTION="taxid: taxids after a non-numerical value are ignored"
+## non-numerical values are rejected, with their line number (KI-25,
+## see fixed_bugs.sh)
+DESCRIPTION="taxid: a non-numerical value is rejected"
 DB=$(make_taxid_db)
 printf ">q1\nMKV\n" | \
     "${SWIPE}" \
         --db "${DB}" \
         --taxid <(printf "9606\nabc\n10090\n") \
-        --outfmt 8 | \
-    cut -f 2 | \
-    grep -qx "lcl|s1" && \
+        --outfmt 8 2>&1 | \
+    grep -q "^Illegal taxid on line 2 of taxid file " && \
     success "${DESCRIPTION}" || \
         failure "${DESCRIPTION}"
 remove_db "${DB}"
 unset DB
 
-DESCRIPTION="taxid: a non-numerical first value (no hits)"
+DESCRIPTION="taxid: a non-numerical first value is rejected"
 DB=$(make_taxid_db)
 printf ">q1\nMKV\n" | \
     "${SWIPE}" \
         --db "${DB}" \
         --taxid <(printf "abc\n9606\n") \
-        --outfmt 8 | \
-    grep -q "." && \
-    failure "${DESCRIPTION}" || \
-        success "${DESCRIPTION}"
+        --outfmt 8 2>&1 | \
+    grep -q "^Illegal taxid on line 1 of taxid file " && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
 remove_db "${DB}"
 unset DB
 
-DESCRIPTION="taxid: comma-separated values (only the first is read)"
+DESCRIPTION="taxid: comma-separated values are rejected"
 DB=$(make_taxid_db)
 printf ">q1\nMKV\n" | \
     "${SWIPE}" \
         --db "${DB}" \
         --taxid <(printf "9606,10090\n") \
-        --outfmt 8 | \
-    cut -f 2 | \
-    grep -qx "lcl|s1" && \
+        --outfmt 8 2>&1 | \
+    grep -q "^Illegal taxid on line 1 of taxid file " && \
     success "${DESCRIPTION}" || \
         failure "${DESCRIPTION}"
 remove_db "${DB}"

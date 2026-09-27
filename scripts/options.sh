@@ -332,27 +332,28 @@ printf ">q1\nMKV\n" | \
 remove_db "${DB}"
 unset DB
 
-## numerical values are parsed with atol() and atof(): no error is
-## reported for non-numerical values or trailing characters
-DESCRIPTION="numerical values: trailing characters are silently ignored"
+## numerical values are parsed with strtol() and strtod(), and checked:
+## non-numerical values and trailing characters are rejected (KI-9,
+## see fixed_bugs.sh)
+DESCRIPTION="numerical values: trailing characters are rejected"
 DB=$(printf ">s1\nMKV\n" | make_db prot)
 printf ">q1\nMKV\n" | \
     "${SWIPE}" \
         --db "${DB}" \
-        --num_descriptions 7abc | \
-    grep -qx "Max matches shown: 7" && \
+        --num_descriptions 7abc 2>&1 | \
+    grep -qx "Illegal number of descriptions specified." && \
     success "${DESCRIPTION}" || \
         failure "${DESCRIPTION}"
 remove_db "${DB}"
 unset DB
 
-DESCRIPTION="numerical values: non-numerical values are read as zero"
+DESCRIPTION="numerical values: non-numerical values are rejected"
 DB=$(printf ">s1\nMKV\n" | make_db prot)
 printf ">q1\nMKV\n" | \
     "${SWIPE}" \
         --db "${DB}" \
-        --num_descriptions abc | \
-    grep -qx "Max matches shown: 0" && \
+        --num_descriptions abc 2>&1 | \
+    grep -qx "Illegal number of descriptions specified." && \
     success "${DESCRIPTION}" || \
         failure "${DESCRIPTION}"
 remove_db "${DB}"
@@ -762,27 +763,28 @@ rm -f "${OUTPUT}"
 remove_db "${DB}"
 unset DB OUTPUT
 
-## the output file is opened before the other options are checked
-DESCRIPTION="--out is created even when other options are invalid"
+## the output file is opened once the other options are checked
+## (KI-8, see fixed_bugs.sh)
+DESCRIPTION="--out is not created when other options are invalid"
 OUTPUT=$(mktemp -u)
 "${SWIPE}" \
     --num_threads 0 \
     --out "${OUTPUT}" < /dev/null > /dev/null 2>&1
 [[ -e "${OUTPUT}" ]] && \
-    success "${DESCRIPTION}" || \
-        failure "${DESCRIPTION}"
+    failure "${DESCRIPTION}" || \
+        success "${DESCRIPTION}"
 rm -f "${OUTPUT}"
 unset OUTPUT
 
-DESCRIPTION="--out is truncated even when other options are invalid"
+DESCRIPTION="--out is not truncated when other options are invalid"
 OUTPUT=$(mktemp)
 printf "previous content\n" > "${OUTPUT}"
 "${SWIPE}" \
     --num_threads 0 \
     --out "${OUTPUT}" < /dev/null > /dev/null 2>&1
-[[ -s "${OUTPUT}" ]] && \
-    failure "${DESCRIPTION}" || \
-        success "${DESCRIPTION}"
+grep -qx "previous content" "${OUTPUT}" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
 rm -f "${OUTPUT}"
 unset OUTPUT
 
@@ -933,14 +935,14 @@ for OUTFMT in -1 1 2 3 4 5 6 10 98 100 ; do
 done
 unset OUTFMT
 
-## atol("abc") = 0
-DESCRIPTION="--outfmt abc is read as --outfmt 0"
+## non-numerical values are rejected (KI-9, see fixed_bugs.sh)
+DESCRIPTION="--outfmt abc is rejected"
 DB=$(printf ">s1\nMKV\n" | make_db prot)
 printf ">q1\nMKV\n" | \
     "${SWIPE}" \
         --db "${DB}" \
-        --outfmt abc | \
-    grep -q "^Sequences producing significant alignments:" && \
+        --outfmt abc 2>&1 | \
+    grep -qx "Illegal view type." && \
     success "${DESCRIPTION}" || \
         failure "${DESCRIPTION}"
 remove_db "${DB}"
@@ -1004,16 +1006,15 @@ done <<EOF
 EOF
 unset NUMBER NAME DBTYPE REPORTED
 
-## names are case-sensitive, and unknown names are parsed with
-## atol(), so they silently select symtype 0 (blastn, see
-## known_issues.sh)
-DESCRIPTION="--symtype names are case-sensitive (BLASTP is read as 0)"
+## names are case-sensitive, and unknown names are rejected (KI-3,
+## see fixed_bugs.sh)
+DESCRIPTION="--symtype names are case-sensitive (BLASTP is rejected)"
 DB=$(printf ">s1\nACGT\n" | make_db nucl)
 printf ">q1\nACGT\n" | \
     "${SWIPE}" \
         --db "${DB}" \
-        --symtype BLASTP | \
-    grep -qx "Symbol type:       Nucleotide" && \
+        --symtype BLASTP 2>&1 | \
+    grep -qx "Illegal symbol type." && \
     success "${DESCRIPTION}" || \
         failure "${DESCRIPTION}"
 remove_db "${DB}"
@@ -1036,16 +1037,15 @@ for SYMTYPE in -1 6 7 ; do
 done
 unset SYMTYPE
 
-## no default gap penalties are set for symbol types above 5, so the
-## gap penalty check fails first, with a misleading error message
-## (see known_issues.sh)
-DESCRIPTION="--symtype 6 without gap penalties: gap penalty error"
+## no default gap penalties are set for symbol types above 5, but the
+## symbol type is checked first (KI-5, see fixed_bugs.sh)
+DESCRIPTION="--symtype 6 without gap penalties: symbol type error"
 DB=$(printf ">s1\nMKV\n" | make_db prot)
 printf ">q1\nMKV\n" | \
     "${SWIPE}" \
         --db "${DB}" \
         --symtype 6 2>&1 | \
-    grep -qx "Illegal gap penalties." && \
+    grep -qx "Illegal symbol type." && \
     success "${DESCRIPTION}" || \
         failure "${DESCRIPTION}"
 remove_db "${DB}"
@@ -1158,9 +1158,10 @@ for STRAND in 0 4 -1 forward PLUS abc ; do
 done
 unset STRAND
 
-## the minus strand makes no sense for protein queries (see also
-## known_issues.sh for tblastx)
-for SYMTYPE in 1 3 4 ; do
+## the minus strand makes no sense for protein queries (tblastx
+## queries are nucleotides: --strand 2 is accepted, KI-4, see
+## fixed_bugs.sh)
+for SYMTYPE in 1 3 ; do
     DESCRIPTION="--strand 2 is rejected with --symtype ${SYMTYPE}"
     printf ">q1\nACGT\n" | \
         "${SWIPE}" \
@@ -1431,14 +1432,14 @@ printf ">q1\nMKV\n" | \
 remove_db "${DB}"
 unset DB
 
-## note the typo "Effecive"
+## the typo "Effecive" is fixed (KI-34, see fixed_bugs.sh)
 DESCRIPTION="--dbsize is reported in the parameter block"
 DB=$(printf ">s1\nMKV\n" | make_db prot)
 printf ">q1\nMKV\n" | \
     "${SWIPE}" \
         --db "${DB}" \
         --dbsize 1000 | \
-    grep -qx "Effecive db size:  1000" && \
+    grep -qx "Effective db size: 1000" && \
     success "${DESCRIPTION}" || \
         failure "${DESCRIPTION}"
 remove_db "${DB}"
@@ -1959,17 +1960,17 @@ for OPTION in -k --minevalue -u --max_score ; do
 done
 unset OPTION
 
-## values are not validated
+## negative values are rejected (KI-7, KI-9, see fixed_bugs.sh)
 for OPTION in --num_descriptions --num_alignments --evalue --minevalue \
                                  --min_score --max_score ; do
-    DESCRIPTION="${OPTION} accepts negative values"
+    DESCRIPTION="${OPTION} rejects negative values"
     DB=$(printf ">s1\nMKV\n" | make_db prot)
     printf ">q1\nMKV\n" | \
         "${SWIPE}" \
             --db "${DB}" \
             "${OPTION}" -1 > /dev/null 2>&1 && \
-        success "${DESCRIPTION}" || \
-            failure "${DESCRIPTION}"
+        failure "${DESCRIPTION}" || \
+            success "${DESCRIPTION}"
     remove_db "${DB}"
     unset DB
 done
@@ -2067,7 +2068,7 @@ printf ">q1\nMKV\n" | \
 remove_db "${DB}"
 unset DB
 
-for VALUE in 0 1 5 -1 abc ; do
+for VALUE in 0 1 5 -1 ; do
     DESCRIPTION="--subalignments ${VALUE} is accepted"
     DB=$(printf ">s1\nMKV\n" | make_db prot)
     printf ">q1\nMKV\n" | \
@@ -2080,6 +2081,20 @@ for VALUE in 0 1 5 -1 abc ; do
     unset DB
 done
 unset VALUE
+
+## the value is ignored, but non-numerical values are rejected (KI-9,
+## see fixed_bugs.sh)
+DESCRIPTION="--subalignments abc is rejected"
+DB=$(printf ">s1\nMKV\n" | make_db prot)
+printf ">q1\nMKV\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --subalignments abc 2>&1 | \
+    grep -qx "Illegal number of subalignments specified." && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
 
 DESCRIPTION="--subalignments has no effect on results"
 DB=$(printf ">s1\nMKV\n>s2\nMKVW\n" | make_db prot)
@@ -2151,21 +2166,30 @@ DESCRIPTION="checks: output format is checked before gap penalties"
     success "${DESCRIPTION}" || \
         failure "${DESCRIPTION}"
 
-DESCRIPTION="checks: gap penalties are checked before symbol type"
+DESCRIPTION="checks: output format is checked before symbol type"
+"${SWIPE}" \
+    --db missing_database \
+    --outfmt 1 \
+    --symtype 6 < /dev/null 2>&1 | \
+    grep -qx "Illegal view type." && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+
+DESCRIPTION="checks: symbol type is checked before gap penalties"
 "${SWIPE}" \
     --db missing_database \
     --gapopen -1 \
     --symtype 6 < /dev/null 2>&1 | \
-    grep -qx "Illegal gap penalties." && \
+    grep -qx "Illegal symbol type." && \
     success "${DESCRIPTION}" || \
         failure "${DESCRIPTION}"
 
-DESCRIPTION="checks: symbol type is checked before strands"
+DESCRIPTION="checks: gap penalties are checked before strands"
 "${SWIPE}" \
     --db missing_database \
-    --symtype -1 \
+    --gapopen -1 \
     --strand 0 < /dev/null 2>&1 | \
-    grep -qx "Illegal symbol type." && \
+    grep -qx "Illegal gap penalties." && \
     success "${DESCRIPTION}" || \
         failure "${DESCRIPTION}"
 

@@ -493,21 +493,6 @@ printf ">q1\nMKV\n" | \
 remove_db "${DB}"
 unset DB
 
-## KI-35: the error message for a missing sequence file has an
-## extra newline
-DESCRIPTION="KI-35: missing .psq file, error message ends with an empty line"
-DB=$(printf ">s1\nMKV\n" | make_db prot)
-rm -f "${DB}.psq"
-printf ">q1\nMKV\n" | \
-    "${SWIPE}" \
-        --db "${DB}" 2>&1 | \
-    tail -n 1 | \
-    grep -qx "" && \
-    success "${DESCRIPTION}" || \
-        failure "${DESCRIPTION}"
-remove_db "${DB}"
-unset DB
-
 ## KI-36: with tblastn, the simple XML output reports the length
 ## of the translated database sequence (amino acids), other outputs
 ## report the length of the database sequence (nucleotides)

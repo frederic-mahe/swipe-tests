@@ -1165,6 +1165,21 @@ printf ">q1\nACGTACGT\n" | \
 remove_db "${DB}"
 unset DB
 
+## KI-35: the error message for a missing sequence file had an
+## extra newline
+DESCRIPTION="KI-35: missing .psq file, error message has no extra empty line"
+DB=$(printf ">s1\nMKV\n" | make_db prot)
+rm -f "${DB}.psq"
+printf ">q1\nMKV\n" | \
+    "${SWIPE}" \
+        --db "${DB}" 2>&1 | \
+    tail -n 1 | \
+    grep -qx "Unable to open file ${DB}.psq." && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
 ## KI-37: with --outfmt 7, hits shown without an alignment (beyond
 ## --num_alignments) reported an uninitialized <len> (0, a stale
 ## value, or garbage)

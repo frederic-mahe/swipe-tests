@@ -197,15 +197,16 @@ printf ">q1\nMKV\n" | \
 remove_db "${DB}"
 unset DB
 
-## the error message for the sequence file ends with two newlines
-DESCRIPTION="database: missing sequence file (.psq) (extra empty line)"
+## the error message for the sequence file ends with a single
+## newline (KI-35, see fixed_bugs.sh)
+DESCRIPTION="database: missing sequence file (.psq) (no extra empty line)"
 DB=$(printf ">s1\nMKV\n" | make_db prot)
 rm -f "${DB}.psq"
 printf ">q1\nMKV\n" | \
     "${SWIPE}" \
         --db "${DB}" 2>&1 | \
     wc -l | \
-    grep -qx " *2" && \
+    grep -qx " *1" && \
     success "${DESCRIPTION}" || \
         failure "${DESCRIPTION}"
 remove_db "${DB}"

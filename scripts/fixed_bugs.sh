@@ -1230,6 +1230,24 @@ if [[ "${VALGRIND_WORKS}" == "true" ]] ; then
     unset DB LOG i
 fi
 
+## GitHub #28: crash when searching nucleotide sequences (fixed in
+## 2.0.12). A local variable shadowed the global maxchunksize, and
+## the lists of the alignment threads were allocated too small: two
+## database sequences searched on both strands corrupted the heap
+DESCRIPTION="2.0.12 (GitHub #28): blastn, 2 subjects, both strands (4 hits)"
+DB=$(printf ">s1\nACGTACGTTGCAA\n>s2\nACGTACGTTGCAAA\n" | make_db nucl)
+printf ">q1\nACGTACGTTGCA\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --symtype 0 \
+        --outfmt 8 | \
+    wc -l | \
+    grep -qx " *4" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
 
 #*****************************************************************************#
 #                                                                             #
@@ -1301,6 +1319,57 @@ printf ">q1\nMKV\n" | \
         failure "${DESCRIPTION}"
 remove_db "${DB}"
 unset DB
+
+## GitHub #16: segmentation fault with large nucleotide databases
+## when many alignments are asked for (-b 1000000), fixed in 2.0.11:
+## memory for hits is now limited by the number of database
+## sequences. Plus strand only: on both strands, versions before
+## 2.0.12 also hit GitHub #28
+DESCRIPTION="2.0.11 (GitHub #16): blastn, 100 subjects with -v and -b 2,000,000,000"
+DB=$(for ((i = 1 ; i <= 100 ; i++)) ; do
+         printf ">s%d\nACGTACGTTGCA%s\n" ${i} "$(repeat A $(( i % 13 )))"
+     done | make_db nucl)
+printf ">q1\nACGTACGTTGCA\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --symtype 0 \
+        --strand 1 \
+        --num_descriptions 2000000000 \
+        --num_alignments 2000000000 \
+        --outfmt 8 | \
+    cut -f 2 | \
+    sort -u | \
+    wc -l | \
+    grep -qx " *100" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB i
+
+## GitHub #26: after a score above 32,768 in a channel of the 16-bit
+## engine, the next sequence in that channel was not fully reset:
+## M (-32,768) was added once, and cells above 32,768 kept their
+## excess (fixed in 2.0.11: M is added twice). The next score was too
+## large, and computing its alignment ended with "Internal error in
+## align function". Here, s0 scores 33,000 (3,000 W): the last cells
+## of its column keep up to 232. The 16 other sequences have the same
+## length (one of them follows s0 in its channel) and start with 20 W
+## (score 220) that inherit that excess
+DESCRIPTION="2.0.11 (GitHub #26): 16-bit channel reset after a score above 32,768"
+DB=$( (printf ">s0\n%s\n" "$(repeat W 3000)"
+       for ((i = 1 ; i <= 16 ; i++)) ; do
+           printf ">s%d\n%s%s\n" ${i} "$(repeat W 20)" "$(repeat P 2980)"
+       done) | make_db prot)
+printf ">q1\n%s\n" "$(repeat W 3000)" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --outfmt 7 | \
+    grep -cx "      <score>220</score>" | \
+    grep -qx "16" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB i
 
 
 #*****************************************************************************#
@@ -1426,6 +1495,45 @@ printf ">q1\n%sPPPP%s\n" "$(repeat W 3000)" "$(repeat W 3000)" | \
 remove_db "${DB}"
 unset DB
 
+## GitHub #10: no similarity was reported for the self-alignment of
+## long proteins (about 6,800 aa) as soon as the score reached 2^15
+## (fixed in 2.0.8). Here, the 20 amino acids are repeated 350 times
+## (sum of the BLOSUM62 diagonal: 116, 350 x 116 = 40,600)
+DESCRIPTION="2.0.8 (GitHub #10): self-hit of a 7,000 aa protein (score 40,600)"
+QUERY=$(repeat ACDEFGHIKLMNPQRSTVWY 350)
+DB=$(printf ">s1\n%s\n" "${QUERY}" | make_db prot)
+printf ">q1\n%s\n" "${QUERY}" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --outfmt 7 | \
+    grep -qx "      <score>40600</score>" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB QUERY
+
+## GitHub #3: "Internal error in align function", seen when a long
+## protein was compared to itself (score 65,542), fixed in 2.0.8.
+## Self-hits scoring around 2^15 and 2^16 (W/W = 11, A/A = 4, W/A = -3):
+## number of W, number of A, expected score
+for SCORES in "2977 5 32767" "2976 8 32768" "2975 11 32769" \
+              "5957 2 65535" "5956 5 65536" "5954 12 65542" ; do
+    read -r W_COUNT A_COUNT SCORE <<< "${SCORES}"
+    DESCRIPTION="2.0.8 (GitHub #3): self-hit scoring ${SCORE} (${W_COUNT} W, ${A_COUNT} A)"
+    QUERY="$(repeat W "${W_COUNT}")$(repeat A "${A_COUNT}")"
+    DB=$(printf ">s1\n%s\n" "${QUERY}" | make_db prot)
+    printf ">q1\n%s\n" "${QUERY}" | \
+        "${SWIPE}" \
+            --db "${DB}" \
+            --outfmt 7 | \
+        grep -qx "      <score>${SCORE}</score>" && \
+        success "${DESCRIPTION}" || \
+            failure "${DESCRIPTION}"
+    remove_db "${DB}"
+    unset DB QUERY
+done
+unset SCORES W_COUNT A_COUNT SCORE
+
 
 #*****************************************************************************#
 #                                                                             #
@@ -1483,6 +1591,23 @@ printf ">q1\nMKVLAAGIVGLLLAW\n" | \
         --db "${DB}" \
         -z 1000000 | \
     grep -qx "Effecive db size:  1000000" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+## GitHub #4: swipe crashed on some of NCBI's preformatted databases,
+## e.g. nr ("probably fixed in SWIPE 2.0.6"). Before 2.0.6, the buffers
+## for sequence titles had 2,048 bytes: a longer title, as found in
+## nr, ended with a segmentation fault (see database.sh for the
+## truncation of long titles)
+DESCRIPTION="2.0.6 (GitHub #4): title of 3,000 characters (no crash)"
+DB=$(printf ">sp|P12345|NAME_HUMAN %s\nMKV\n" "$(printf "%03000d" 0)" | make_db prot -parse_seqids)
+printf ">q1\nMKV\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --outfmt 8 | \
+    grep -q "^q1	sp|P12345|NAME_HUMAN	100.00	3	" && \
     success "${DESCRIPTION}" || \
         failure "${DESCRIPTION}"
 remove_db "${DB}"

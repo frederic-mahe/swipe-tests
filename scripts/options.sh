@@ -1036,16 +1036,15 @@ for SYMTYPE in -1 6 7 ; do
 done
 unset SYMTYPE
 
-## no default gap penalties are set for symbol types above 5, so the
-## gap penalty check fails first, with a misleading error message
-## (see known_issues.sh)
-DESCRIPTION="--symtype 6 without gap penalties: gap penalty error"
+## no default gap penalties are set for symbol types above 5, but the
+## symbol type is checked first (KI-5, see fixed_bugs.sh)
+DESCRIPTION="--symtype 6 without gap penalties: symbol type error"
 DB=$(printf ">s1\nMKV\n" | make_db prot)
 printf ">q1\nMKV\n" | \
     "${SWIPE}" \
         --db "${DB}" \
         --symtype 6 2>&1 | \
-    grep -qx "Illegal gap penalties." && \
+    grep -qx "Illegal symbol type." && \
     success "${DESCRIPTION}" || \
         failure "${DESCRIPTION}"
 remove_db "${DB}"
@@ -2151,21 +2150,30 @@ DESCRIPTION="checks: output format is checked before gap penalties"
     success "${DESCRIPTION}" || \
         failure "${DESCRIPTION}"
 
-DESCRIPTION="checks: gap penalties are checked before symbol type"
+DESCRIPTION="checks: output format is checked before symbol type"
+"${SWIPE}" \
+    --db missing_database \
+    --outfmt 1 \
+    --symtype 6 < /dev/null 2>&1 | \
+    grep -qx "Illegal view type." && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+
+DESCRIPTION="checks: symbol type is checked before gap penalties"
 "${SWIPE}" \
     --db missing_database \
     --gapopen -1 \
     --symtype 6 < /dev/null 2>&1 | \
-    grep -qx "Illegal gap penalties." && \
+    grep -qx "Illegal symbol type." && \
     success "${DESCRIPTION}" || \
         failure "${DESCRIPTION}"
 
-DESCRIPTION="checks: symbol type is checked before strands"
+DESCRIPTION="checks: gap penalties are checked before strands"
 "${SWIPE}" \
     --db missing_database \
-    --symtype -1 \
+    --gapopen -1 \
     --strand 0 < /dev/null 2>&1 | \
-    grep -qx "Illegal symbol type." && \
+    grep -qx "Illegal gap penalties." && \
     success "${DESCRIPTION}" || \
         failure "${DESCRIPTION}"
 

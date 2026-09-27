@@ -188,6 +188,21 @@ printf ">q1\nMKV\n" | \
 remove_db "${DB}"
 unset DB
 
+## KI-5: symbol types above 5 get no default gap penalties, and the
+## gap penalties were checked first: the error message was about gap
+## penalties. The symbol type is now checked first
+DESCRIPTION="KI-5: --symtype 6 reports an illegal symbol type"
+DB=$(printf ">s1\nMKV\n" | make_db prot)
+printf ">q1\nMKV\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --symtype 6 2>&1 | \
+    grep -qx "Illegal symbol type." && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
 ## KI-10: with -v 0 and -b 0, the hit list had no room and its last
 ## entry (index -1) was read
 DESCRIPTION="KI-10: -v 0 -b 0 reports no hits"

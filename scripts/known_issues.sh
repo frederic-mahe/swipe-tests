@@ -118,20 +118,6 @@ printf ">q1\nACGTACGTACGT\n" | \
 remove_db "${DB}"
 unset DB
 
-## KI-5: symbol types above 5 get no default gap penalties, so the
-## error message is about gap penalties, not the symbol type
-DESCRIPTION="KI-5: --symtype 6 reports illegal gap penalties"
-DB=$(printf ">s1\nMKV\n" | make_db prot)
-printf ">q1\nMKV\n" | \
-    "${SWIPE}" \
-        --db "${DB}" \
-        --symtype 6 2>&1 | \
-    grep -qx "Illegal gap penalties." && \
-    success "${DESCRIPTION}" || \
-        failure "${DESCRIPTION}"
-remove_db "${DB}"
-unset DB
-
 ## KI-6: zero means "default value", so a null gap open or gap
 ## extension penalty cannot be used
 DESCRIPTION="KI-6: --gapopen 0 is replaced by 11 (BLOSUM62)"

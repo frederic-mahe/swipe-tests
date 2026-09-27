@@ -224,7 +224,8 @@ DESCRIPTION="unknown option: usage message is written to stdout"
 
 ## getopt messages differ between glibc ("invalid option -- 'Z'") and
 ## the BSD libc of macOS ("invalid option -- Z", or "illegal"/"unknown"
-## in older versions)
+## in older versions; ambiguous options: "option `--num' is ambiguous",
+## see Apple's Libc, stdlib/FreeBSD/getopt_long.c, GNU_COMPATIBLE)
 DESCRIPTION="unknown option: error message is written to stderr"
 "${SWIPE}" -Z < /dev/null 2>&1 > /dev/null | \
     grep -Eq "(invalid|illegal|unknown) option -- '?Z'?$" && \
@@ -291,7 +292,7 @@ printf ">q1\nMKV\n" | \
     "${SWIPE}" \
         --db "${DB}" \
         --num 2 2>&1 > /dev/null | \
-    grep -Eq "option '--num' is ambiguous|ambiguous option -- num" && \
+    grep -Eq "option [\`']--num' is ambiguous|ambiguous option -- num" && \
     success "${DESCRIPTION}" || \
         failure "${DESCRIPTION}"
 remove_db "${DB}"

@@ -111,13 +111,13 @@ make_output_db () {
 #                                                                             #
 #*****************************************************************************#
 
-DESCRIPTION="plain: first line is the program name, version and date"
+DESCRIPTION="plain: first line is the program name and version (no build date)"
 DB=$(make_output_db)
 printf ">q1\nMKVLAAGIVGLLLAW\n" | \
     "${SWIPE}" \
         --db "${DB}" | \
     head -n 1 | \
-    grep -Eqx "SWIPE [0-9]+[.][0-9]+[.][0-9]+ \[[A-Z][a-z]{2} [ 0-9]{2} [0-9]{4} [0-9:]{8}\]" && \
+    grep -Eqx "SWIPE [0-9]+[.][0-9]+[.][0-9]+" && \
     success "${DESCRIPTION}" || \
         failure "${DESCRIPTION}"
 remove_db "${DB}"
@@ -813,14 +813,14 @@ printf ">q1\nMKVLAAGIVGLLLAW\n" | \
 remove_db "${DB}"
 unset DB
 
-DESCRIPTION="TSV+: first comment line (program, version, date, reference)"
+DESCRIPTION="TSV+: first comment line (program, version, reference, no build date)"
 DB=$(make_output_db)
 printf ">q1\nMKVLAAGIVGLLLAW\n" | \
     "${SWIPE}" \
         --db "${DB}" \
         --outfmt 9 | \
     head -n 1 | \
-    grep -Eqx "# SWIPE [0-9.]+ - Compiled .* - Reference: T. Rognes \(2011\) .*, 12:221." && \
+    grep -Eqx "# SWIPE [0-9.]+ - Reference: T. Rognes \(2011\) .*, 12:221." && \
     success "${DESCRIPTION}" || \
         failure "${DESCRIPTION}"
 remove_db "${DB}"

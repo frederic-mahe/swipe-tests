@@ -148,10 +148,10 @@ DESCRIPTION="--help writes nothing to stderr"
     failure "${DESCRIPTION}" || \
         success "${DESCRIPTION}"
 
-DESCRIPTION="--help message starts with the program name and version"
+DESCRIPTION="--help message starts with the program name and version (no build date)"
 "${SWIPE}" --help 2> /dev/null | \
     head -n 1 | \
-    grep -Eq "^SWIPE [0-9]+[.][0-9]+[.][0-9]+ \[" && \
+    grep -Eqx "SWIPE [0-9]+[.][0-9]+[.][0-9]+" && \
     success "${DESCRIPTION}" || \
         failure "${DESCRIPTION}"
 

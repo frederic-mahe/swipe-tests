@@ -103,21 +103,6 @@ printf ">q1\nACGT\n" | \
 remove_db "${DB}"
 unset DB
 
-## KI-4: the query of tblastx is a nucleotide sequence, but its
-## minus strand cannot be selected alone
-DESCRIPTION="KI-4: --strand 2 is rejected with tblastx"
-DB=$(printf ">s1\nACGTACGTACGT\n" | make_db nucl)
-printf ">q1\nACGTACGTACGT\n" | \
-    "${SWIPE}" \
-        --db "${DB}" \
-        --symtype 4 \
-        --strand 2 2>&1 | \
-    grep -qx "Illegal strand specified for protein query." && \
-    success "${DESCRIPTION}" || \
-        failure "${DESCRIPTION}"
-remove_db "${DB}"
-unset DB
-
 ## KI-6: zero means "default value", so a null gap open or gap
 ## extension penalty cannot be used
 DESCRIPTION="KI-6: --gapopen 0 is replaced by 11 (BLOSUM62)"

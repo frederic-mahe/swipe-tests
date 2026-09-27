@@ -1157,9 +1157,10 @@ for STRAND in 0 4 -1 forward PLUS abc ; do
 done
 unset STRAND
 
-## the minus strand makes no sense for protein queries (see also
-## known_issues.sh for tblastx)
-for SYMTYPE in 1 3 4 ; do
+## the minus strand makes no sense for protein queries (tblastx
+## queries are nucleotides: --strand 2 is accepted, KI-4, see
+## fixed_bugs.sh)
+for SYMTYPE in 1 3 ; do
     DESCRIPTION="--strand 2 is rejected with --symtype ${SYMTYPE}"
     printf ">q1\nACGT\n" | \
         "${SWIPE}" \

@@ -188,6 +188,64 @@ printf ">q1\nMKV\n" | \
 remove_db "${DB}"
 unset DB
 
+## KI-4: the query of tblastx is a nucleotide sequence, but its minus
+## strand could not be selected alone ("Illegal strand specified for
+## protein query."). --strand 2 is now accepted for tblastx
+DESCRIPTION="KI-4: --strand 2 is accepted with tblastx"
+DB=$(printf ">s1\nCACAATGCCTGCTGCCAGAACTTTCAT\n" | make_db nucl)
+printf ">q1\nATGAAAGTTCTGGCAGCAGGCATTGTG\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --symtype 4 \
+        --strand 2 > /dev/null 2>&1 && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-4: tblastx --strand 2 finds a hit on the minus strand of the query"
+DB=$(printf ">s1\nCACAATGCCTGCTGCCAGAACTTTCAT\n" | make_db nucl)
+printf ">q1\nATGAAAGTTCTGGCAGCAGGCATTGTG\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --symtype 4 \
+        --strand 2 \
+        --outfmt 8 | \
+    head -n 1 | \
+    cut -f 7-10 | \
+    grep -qx "27	1	1	27" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-4: tblastx --strand 2 only reports hits on the minus strand of the query"
+DB=$(printf ">s1\nCACAATGCCTGCTGCCAGAACTTTCAT\n" | make_db nucl)
+printf ">q1\nATGAAAGTTCTGGCAGCAGGCATTGTG\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --symtype 4 \
+        --strand 2 \
+        --outfmt 8 | \
+    awk -F "\t" '$7 < $8 {exit 1}' && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-4: blastp --strand 2 is still rejected (protein query)"
+DB=$(printf ">s1\nMKV\n" | make_db prot)
+printf ">q1\nMKV\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --symtype 1 \
+        --strand 2 2>&1 | \
+    grep -qx "Illegal strand specified for protein query." && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
 ## KI-5: symbol types above 5 get no default gap penalties, and the
 ## gap penalties were checked first: the error message was about gap
 ## penalties. The symbol type is now checked first

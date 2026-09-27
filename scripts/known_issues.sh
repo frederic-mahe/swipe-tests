@@ -81,8 +81,9 @@ ASAN_OPTIONS=help=1 "${SWIPE}" -h 2>&1 | \
 ## the corresponding issue is fixed: the test should then be updated
 ## to pin the new behaviour (and moved to fixed_bugs.sh).
 ##
-## Issues are numbered as in the file TBD_20260926_potential_issues.md
-## (swipe repository), where they are described in details.
+## Issues are numbered KI-1 to KI-36, as in the file
+## TBD_20260926_potential_issues.md (swipe repository), where they are
+## described in details.
 
 
 #*****************************************************************************#
@@ -91,15 +92,15 @@ ASAN_OPTIONS=help=1 "${SWIPE}" -h 2>&1 | \
 #                                                                             #
 #*****************************************************************************#
 
-## issue 1: the help message advertises --taxidlist, but the long
+## KI-1: the help message advertises --taxidlist, but the long
 ## option is named --taxid
-DESCRIPTION="issue 1: help message lists --taxidlist"
+DESCRIPTION="KI-1: help message lists --taxidlist"
 "${SWIPE}" --help 2> /dev/null | \
     grep -q "^  -x, --taxidlist=FILE" && \
     success "${DESCRIPTION}" || \
         failure "${DESCRIPTION}"
 
-DESCRIPTION="issue 1: --taxidlist is rejected"
+DESCRIPTION="KI-1: --taxidlist is rejected"
 DB=$(printf ">s1\nMKV\n" | make_db prot)
 printf ">q1\nMKV\n" | \
     "${SWIPE}" \
@@ -111,7 +112,7 @@ printf ">q1\nMKV\n" | \
 remove_db "${DB}"
 unset DB
 
-DESCRIPTION="issue 1: --taxid is accepted"
+DESCRIPTION="KI-1: --taxid is accepted"
 DB=$(printf ">s1\nMKV\n" | make_db prot)
 printf ">q1\nMKV\n" | \
     "${SWIPE}" \
@@ -124,16 +125,16 @@ printf ">q1\nMKV\n" | \
 remove_db "${DB}"
 unset DB
 
-## issue 2: --help exits with status 1 (GNU convention is 0)
-DESCRIPTION="issue 2: --help exits with status 1"
+## KI-2: --help exits with status 1 (GNU convention is 0)
+DESCRIPTION="KI-2: --help exits with status 1"
 "${SWIPE}" --help > /dev/null 2>&1
 (( $? == 1 )) && \
     success "${DESCRIPTION}" || \
         failure "${DESCRIPTION}"
 
-## issue 3: unknown symtype names are parsed with atol() and silently
+## KI-3: unknown symtype names are parsed with atol() and silently
 ## select symtype 0 (blastn)
-DESCRIPTION="issue 3: --symtype with a misspelled name selects blastn"
+DESCRIPTION="KI-3: --symtype with a misspelled name selects blastn"
 DB=$(printf ">s1\nACGT\n" | make_db nucl)
 printf ">q1\nACGT\n" | \
     "${SWIPE}" \
@@ -145,9 +146,9 @@ printf ">q1\nACGT\n" | \
 remove_db "${DB}"
 unset DB
 
-## issue 4: the query of tblastx is a nucleotide sequence, but its
+## KI-4: the query of tblastx is a nucleotide sequence, but its
 ## minus strand cannot be selected alone
-DESCRIPTION="issue 4: --strand 2 is rejected with tblastx"
+DESCRIPTION="KI-4: --strand 2 is rejected with tblastx"
 DB=$(printf ">s1\nACGTACGTACGT\n" | make_db nucl)
 printf ">q1\nACGTACGTACGT\n" | \
     "${SWIPE}" \
@@ -160,9 +161,9 @@ printf ">q1\nACGTACGTACGT\n" | \
 remove_db "${DB}"
 unset DB
 
-## issue 5: symbol types above 5 get no default gap penalties, so the
+## KI-5: symbol types above 5 get no default gap penalties, so the
 ## error message is about gap penalties, not the symbol type
-DESCRIPTION="issue 5: --symtype 6 reports illegal gap penalties"
+DESCRIPTION="KI-5: --symtype 6 reports illegal gap penalties"
 DB=$(printf ">s1\nMKV\n" | make_db prot)
 printf ">q1\nMKV\n" | \
     "${SWIPE}" \
@@ -174,9 +175,9 @@ printf ">q1\nMKV\n" | \
 remove_db "${DB}"
 unset DB
 
-## issue 6: zero means "default value", so a null gap open or gap
+## KI-6: zero means "default value", so a null gap open or gap
 ## extension penalty cannot be used
-DESCRIPTION="issue 6: --gapopen 0 is replaced by 11 (BLOSUM62)"
+DESCRIPTION="KI-6: --gapopen 0 is replaced by 11 (BLOSUM62)"
 DB=$(printf ">s1\nMKV\n" | make_db prot)
 printf ">q1\nMKV\n" | \
     "${SWIPE}" \
@@ -189,7 +190,7 @@ printf ">q1\nMKV\n" | \
 remove_db "${DB}"
 unset DB
 
-DESCRIPTION="issue 6: --gapopen 0 is replaced by 5 (blastn)"
+DESCRIPTION="KI-6: --gapopen 0 is replaced by 5 (blastn)"
 DB=$(printf ">s1\nACGT\n" | make_db nucl)
 printf ">q1\nACGT\n" | \
     "${SWIPE}" \
@@ -202,7 +203,7 @@ printf ">q1\nACGT\n" | \
 remove_db "${DB}"
 unset DB
 
-DESCRIPTION="issue 6: --gapextend 0 is replaced by 2 (blastn)"
+DESCRIPTION="KI-6: --gapextend 0 is replaced by 2 (blastn)"
 DB=$(printf ">s1\nACGT\n" | make_db nucl)
 printf ">q1\nACGT\n" | \
     "${SWIPE}" \
@@ -216,9 +217,9 @@ printf ">q1\nACGT\n" | \
 remove_db "${DB}"
 unset DB
 
-## issue 7: an expect value of zero (or a non-numerical value, read
+## KI-7: an expect value of zero (or a non-numerical value, read
 ## as zero) disables the expect value filter
-DESCRIPTION="issue 7: --evalue 0 reports all hits"
+DESCRIPTION="KI-7: --evalue 0 reports all hits"
 DB=$(printf ">s1\nMKVLAAGIVGLLLAW\n>s2\nMKV\n" | make_db prot)
 printf ">q1\nMKVLAAGIVGLLLAW\n" | \
     "${SWIPE}" \
@@ -232,7 +233,7 @@ printf ">q1\nMKVLAAGIVGLLLAW\n" | \
 remove_db "${DB}"
 unset DB
 
-DESCRIPTION="issue 7: --evalue 1e-300 reports no hits"
+DESCRIPTION="KI-7: --evalue 1e-300 reports no hits"
 DB=$(printf ">s1\nMKVLAAGIVGLLLAW\n>s2\nMKV\n" | make_db prot)
 printf ">q1\nMKVLAAGIVGLLLAW\n" | \
     "${SWIPE}" \
@@ -245,7 +246,7 @@ printf ">q1\nMKVLAAGIVGLLLAW\n" | \
 remove_db "${DB}"
 unset DB
 
-DESCRIPTION="issue 7: --evalue -1 reports all hits"
+DESCRIPTION="KI-7: --evalue -1 reports all hits"
 DB=$(printf ">s1\nMKVLAAGIVGLLLAW\n>s2\nMKV\n" | make_db prot)
 printf ">q1\nMKVLAAGIVGLLLAW\n" | \
     "${SWIPE}" \
@@ -259,9 +260,9 @@ printf ">q1\nMKVLAAGIVGLLLAW\n" | \
 remove_db "${DB}"
 unset DB
 
-## issue 8: the output file is opened (and truncated) before the
+## KI-8: the output file is opened (and truncated) before the
 ## other options are checked
-DESCRIPTION="issue 8: --out is truncated when another option is invalid"
+DESCRIPTION="KI-8: --out is truncated when another option is invalid"
 OUTPUT=$(mktemp)
 printf "previous content\n" > "${OUTPUT}"
 "${SWIPE}" \
@@ -273,8 +274,8 @@ printf "previous content\n" > "${OUTPUT}"
 rm -f "${OUTPUT}"
 unset OUTPUT
 
-## issue 9: numerical values are not validated (atol and atof)
-DESCRIPTION="issue 9: --num_threads 2abc is read as 2"
+## KI-9: numerical values are not validated (atol and atof)
+DESCRIPTION="KI-9: --num_threads 2abc is read as 2"
 DB=$(printf ">s1\nMKV\n" | make_db prot)
 printf ">q1\nMKV\n" | \
     "${SWIPE}" \
@@ -286,7 +287,7 @@ printf ">q1\nMKV\n" | \
 remove_db "${DB}"
 unset DB
 
-DESCRIPTION="issue 9: --dbsize 1e6 is read as 1"
+DESCRIPTION="KI-9: --dbsize 1e6 is read as 1"
 DB=$(printf ">s1\nMKV\n" | make_db prot)
 printf ">q1\nMKV\n" | \
     "${SWIPE}" \
@@ -305,10 +306,10 @@ unset DB
 #                                                                             #
 #*****************************************************************************#
 
-## issue 10: with -v 0 and -b 0, the hit list has no room and the
+## KI-10: with -v 0 and -b 0, the hit list has no room and the
 ## last entry (index -1) is read
 if [[ "${SWIPE_HAS_ASAN}" == "true" ]] ; then
-    DESCRIPTION="issue 10: -v 0 -b 0 heap buffer overflow (ASan)"
+    DESCRIPTION="KI-10: -v 0 -b 0 heap buffer overflow (ASan)"
     DB=$(printf ">s1\nMKV\n" | make_db prot)
     printf ">q1\nMKV\n" | \
         "${SWIPE}" \
@@ -322,11 +323,11 @@ if [[ "${SWIPE_HAS_ASAN}" == "true" ]] ; then
     unset DB
 fi
 
-## issue 11: the 7-bit search engine receives gap penalties as
+## KI-11: the 7-bit search engine receives gap penalties as
 ## 8-bit values: the sum of gap open and gap extension penalties
 ## wraps around (255 + 1 = 256 = 0), the search score is wrong, and
 ## the alignment cannot reproduce it
-DESCRIPTION="issue 11: --gapopen 255 --gapextend 1 fails (internal error)"
+DESCRIPTION="KI-11: --gapopen 255 --gapextend 1 fails (internal error)"
 DB=$(printf ">s1\nWWWAWWW\n" | make_db prot)
 printf ">q1\nWWWWWW\n" | \
     "${SWIPE}" \
@@ -339,7 +340,7 @@ printf ">q1\nWWWWWW\n" | \
 remove_db "${DB}"
 unset DB
 
-DESCRIPTION="issue 11: --gapopen 511 --gapextend 1 fails (internal error)"
+DESCRIPTION="KI-11: --gapopen 511 --gapextend 1 fails (internal error)"
 DB=$(printf ">s1\nWWWAWWW\n" | make_db prot)
 printf ">q1\nWWWWWW\n" | \
     "${SWIPE}" \
@@ -352,7 +353,7 @@ printf ">q1\nWWWWWW\n" | \
 remove_db "${DB}"
 unset DB
 
-DESCRIPTION="issue 11: --gapopen 100 --gapextend 1 works (score 52)"
+DESCRIPTION="KI-11: --gapopen 100 --gapextend 1 works (score 52)"
 DB=$(printf ">s1\nWWWAWWW\n" | make_db prot)
 printf ">q1\nWWWWWW\n" | \
     "${SWIPE}" \
@@ -366,10 +367,10 @@ printf ">q1\nWWWWWW\n" | \
 remove_db "${DB}"
 unset DB
 
-## issue 12: scores are stored as 8-bit values for the 7-bit search:
+## KI-12: scores are stored as 8-bit values for the 7-bit search:
 ## scores below -128 wrap around, giving wrong scores or an internal
 ## error when the alignment cannot reproduce the search score
-DESCRIPTION="issue 12: matrix score -200 gives a wrong score (56 instead of 20)"
+DESCRIPTION="KI-12: matrix score -200 gives a wrong score (56 instead of 20)"
 DB=$(printf ">s1\nW\n" | make_db prot)
 MATRIX=$(mktemp)
 printf "   A  W\nA  5 -200\nW -200 20\n" > "${MATRIX}"
@@ -387,7 +388,7 @@ rm -f "${MATRIX}"
 remove_db "${DB}"
 unset DB MATRIX
 
-DESCRIPTION="issue 12: matrix score -100 gives the right score (20)"
+DESCRIPTION="KI-12: matrix score -100 gives the right score (20)"
 DB=$(printf ">s1\nW\n" | make_db prot)
 MATRIX=$(mktemp)
 printf "   A  W\nA  5 -100\nW -100 20\n" > "${MATRIX}"
@@ -405,7 +406,7 @@ rm -f "${MATRIX}"
 remove_db "${DB}"
 unset DB MATRIX
 
-DESCRIPTION="issue 12: --penalty -200 fails (internal error)"
+DESCRIPTION="KI-12: --penalty -200 fails (internal error)"
 DB=$(printf ">s1\nAAAAAAAAAA\n" | make_db nucl)
 printf ">q1\nAAAAACAAAAA\n" | \
     "${SWIPE}" \
@@ -419,7 +420,7 @@ printf ">q1\nAAAAACAAAAA\n" | \
 remove_db "${DB}"
 unset DB
 
-DESCRIPTION="issue 12: --penalty -128 finds the hit (score 5)"
+DESCRIPTION="KI-12: --penalty -128 finds the hit (score 5)"
 DB=$(printf ">s1\nAAAAAAAAAA\n" | make_db nucl)
 printf ">q1\nAAAAACAAAAA\n" | \
     "${SWIPE}" \
@@ -434,9 +435,9 @@ printf ">q1\nAAAAACAAAAA\n" | \
 remove_db "${DB}"
 unset DB
 
-## issue 13: scores are stored as 16-bit values for the 16-bit
+## KI-13: scores are stored as 16-bit values for the 16-bit
 ## search: scores from 32,768 to 65,535 wrap around to negative values
-DESCRIPTION="issue 13: --reward 32768 loses a perfect hit"
+DESCRIPTION="KI-13: --reward 32768 loses a perfect hit"
 DB=$(printf ">s1\nACGTACGTAC\n" | make_db nucl)
 printf ">q1\nACGTACGTAC\n" | \
     "${SWIPE}" \
@@ -451,7 +452,7 @@ printf ">q1\nACGTACGTAC\n" | \
 remove_db "${DB}"
 unset DB
 
-DESCRIPTION="issue 13: --reward 32767 finds a perfect hit"
+DESCRIPTION="KI-13: --reward 32767 finds a perfect hit"
 DB=$(printf ">s1\nACGTACGTAC\n" | make_db nucl)
 printf ">q1\nACGTACGTAC\n" | \
     "${SWIPE}" \
@@ -467,7 +468,7 @@ printf ">q1\nACGTACGTAC\n" | \
 remove_db "${DB}"
 unset DB
 
-DESCRIPTION="issue 13: --reward 70000 finds a perfect hit"
+DESCRIPTION="KI-13: --reward 70000 finds a perfect hit"
 DB=$(printf ">s1\nACGTACGTAC\n" | make_db nucl)
 printf ">q1\nACGTACGTAC\n" | \
     "${SWIPE}" \
@@ -483,7 +484,7 @@ printf ">q1\nACGTACGTAC\n" | \
 remove_db "${DB}"
 unset DB
 
-DESCRIPTION="issue 13: matrix score 40000 loses a perfect hit"
+DESCRIPTION="KI-13: matrix score 40000 loses a perfect hit"
 DB=$(printf ">s1\nW\n" | make_db prot)
 MATRIX=$(mktemp)
 printf "   W\nW  40000\n" > "${MATRIX}"
@@ -507,9 +508,9 @@ unset DB MATRIX
 #                                                                             #
 #*****************************************************************************#
 
-## issue 14: a row with fewer scores than columns is accepted, and
+## KI-14: a row with fewer scores than columns is accepted, and
 ## the missing scores take the value of the previous score
-DESCRIPTION="issue 14: matrix file, missing score reuses the previous one"
+DESCRIPTION="KI-14: matrix file, missing score reuses the previous one"
 DB=$(printf ">s1\nA\n" | make_db prot)
 MATRIX=$(mktemp)
 printf "   A  W\nA  5\nW  3 20\n" > "${MATRIX}"
@@ -527,9 +528,9 @@ rm -f "${MATRIX}"
 remove_db "${DB}"
 unset DB MATRIX
 
-## issue 15: BLOSUM62_20 has statistical parameters and default gap
+## KI-15: BLOSUM62_20 has statistical parameters and default gap
 ## penalties, but no built-in matrix
-DESCRIPTION="issue 15: BLOSUM62_20 has default gap penalties"
+DESCRIPTION="KI-15: BLOSUM62_20 has default gap penalties"
 DB=$(printf ">s1\nMKV\n" | make_db prot)
 printf ">q1\nMKV\n" | \
     "${SWIPE}" \
@@ -541,7 +542,7 @@ printf ">q1\nMKV\n" | \
 remove_db "${DB}"
 unset DB
 
-DESCRIPTION="issue 15: BLOSUM62_20 is searched as a file"
+DESCRIPTION="KI-15: BLOSUM62_20 is searched as a file"
 DB=$(printf ">s1\nMKV\n" | make_db prot)
 printf ">q1\nMKV\n" | \
     "${SWIPE}" \
@@ -560,10 +561,10 @@ unset DB
 #                                                                             #
 #*****************************************************************************#
 
-## issue 16: query lines are read in chunks of 2,047 characters. For
+## KI-16: query lines are read in chunks of 2,047 characters. For
 ## headers longer than that, the rest of the header is read as
 ## sequence (here "MKV" at the end of a 2,050-character header)
-DESCRIPTION="issue 16: long header spills into the sequence"
+DESCRIPTION="KI-16: long header spills into the sequence"
 DB=$(printf ">s1\nMKV\n" | make_db prot)
 printf ">%sMKV\n" "$(printf "%02046d" 0)" | \
     "${SWIPE}" \
@@ -574,7 +575,7 @@ printf ">%sMKV\n" "$(printf "%02046d" 0)" | \
 remove_db "${DB}"
 unset DB
 
-DESCRIPTION="issue 16: long header spills into the sequence (hit)"
+DESCRIPTION="KI-16: long header spills into the sequence (hit)"
 DB=$(printf ">s1\nMKV\n" | make_db prot)
 printf ">%sMKV\n" "$(printf "%02046d" 0)" | \
     "${SWIPE}" \
@@ -587,9 +588,9 @@ printf ">%sMKV\n" "$(printf "%02046d" 0)" | \
 remove_db "${DB}"
 unset DB
 
-## issue 17: a '>' at position 2,048 of a sequence line starts a new
+## KI-17: a '>' at position 2,048 of a sequence line starts a new
 ## query
-DESCRIPTION="issue 17: '>' at position 2,048 of a sequence line starts a query"
+DESCRIPTION="KI-17: '>' at position 2,048 of a sequence line starts a query"
 DB=$(printf ">s1\nMKV\n" | make_db prot)
 printf ">q1\n%s>MKV\n" "$(printf "%02047d" 0 | tr "0" "A")" | \
     "${SWIPE}" \
@@ -601,7 +602,7 @@ printf ">q1\n%s>MKV\n" "$(printf "%02047d" 0 | tr "0" "A")" | \
 remove_db "${DB}"
 unset DB
 
-DESCRIPTION="issue 17: '>' elsewhere in a sequence line is skipped"
+DESCRIPTION="KI-17: '>' elsewhere in a sequence line is skipped"
 DB=$(printf ">s1\nMKV\n" | make_db prot)
 printf ">q1\n%s>MKV\n" "$(printf "%02046d" 0 | tr "0" "A")" | \
     "${SWIPE}" \
@@ -613,9 +614,9 @@ printf ">q1\n%s>MKV\n" "$(printf "%02046d" 0 | tr "0" "A")" | \
 remove_db "${DB}"
 unset DB
 
-## issue 18: an empty first line is read as an empty query, and
+## KI-18: an empty first line is read as an empty query, and
 ## stops the reading of the query file
-DESCRIPTION="issue 18: empty first line, no query is searched"
+DESCRIPTION="KI-18: empty first line, no query is searched"
 DB=$(printf ">s1\nMKV\n" | make_db prot)
 printf "\n>q1\nMKV\n>q2\nMKV\n" | \
     "${SWIPE}" \
@@ -627,7 +628,7 @@ printf "\n>q1\nMKV\n>q2\nMKV\n" | \
 remove_db "${DB}"
 unset DB
 
-DESCRIPTION="issue 18: empty first line, a single empty query is reported"
+DESCRIPTION="KI-18: empty first line, a single empty query is reported"
 DB=$(printf ">s1\nMKV\n" | make_db prot)
 printf "\n>q1\nMKV\n>q2\nMKV\n" | \
     "${SWIPE}" \
@@ -640,7 +641,7 @@ printf "\n>q1\nMKV\n>q2\nMKV\n" | \
 remove_db "${DB}"
 unset DB
 
-DESCRIPTION="issue 18: empty first line, exit status is 0"
+DESCRIPTION="KI-18: empty first line, exit status is 0"
 DB=$(printf ">s1\nMKV\n" | make_db prot)
 printf "\n>q1\nMKV\n" | \
     "${SWIPE}" \
@@ -650,10 +651,10 @@ printf "\n>q1\nMKV\n" | \
 remove_db "${DB}"
 unset DB
 
-## issue 19: characters are signed, bytes above 0x7f are negative
+## KI-19: characters are signed, bytes above 0x7f are negative
 ## indexes in the symbol tables
 if [[ "${SWIPE_HAS_ASAN}" == "true" ]] ; then
-    DESCRIPTION="issue 19: byte 0xe9 in a query (ASan global-buffer-overflow)"
+    DESCRIPTION="KI-19: byte 0xe9 in a query (ASan global-buffer-overflow)"
     DB=$(printf ">s1\nMKV\n" | make_db prot)
     printf ">q1\nMK\351V\n" | \
         "${SWIPE}" \
@@ -665,8 +666,8 @@ if [[ "${SWIPE_HAS_ASAN}" == "true" ]] ; then
     unset DB
 fi
 
-## issue 20: only spaces end the query id, tabs are kept
-DESCRIPTION="issue 20: a tab in the query header adds a column to TSV output"
+## KI-20: only spaces end the query id, tabs are kept
+DESCRIPTION="KI-20: a tab in the query header adds a column to TSV output"
 DB=$(printf ">s1\nMKV\n" | make_db prot)
 printf ">q1\tfoo bar\nMKV\n" | \
     "${SWIPE}" \
@@ -678,8 +679,8 @@ printf ">q1\tfoo bar\nMKV\n" | \
 remove_db "${DB}"
 unset DB
 
-## issue 21: carriage returns are not removed from headers
-DESCRIPTION="issue 21: CRLF line endings, query id ends with a carriage return"
+## KI-21: carriage returns are not removed from headers
+DESCRIPTION="KI-21: CRLF line endings, query id ends with a carriage return"
 DB=$(printf ">s1\nMKV\n" | make_db prot)
 printf ">q1\r\nMKV\r\n" | \
     "${SWIPE}" \
@@ -700,9 +701,9 @@ unset DB
 #                                                                             #
 #*****************************************************************************#
 
-## issue 22: PDB identifiers written by recent versions of makeblastdb
+## KI-22: PDB identifiers written by recent versions of makeblastdb
 ## contain a chain-id field (0xA3), unknown to the ASN.1 parser
-DESCRIPTION="issue 22: PDB identifiers (fatal ASN.1 parsing error)"
+DESCRIPTION="KI-22: PDB identifiers (fatal ASN.1 parsing error)"
 DB=$(printf ">pdb|1ABC|A chain A\nMKV\n" | make_db prot -parse_seqids)
 printf ">q1\nMKV\n" | \
     "${SWIPE}" \
@@ -714,7 +715,7 @@ printf ">q1\nMKV\n" | \
 remove_db "${DB}"
 unset DB
 
-DESCRIPTION="issue 22: PDB identifiers (unexpected object 0xa3)"
+DESCRIPTION="KI-22: PDB identifiers (unexpected object 0xa3)"
 DB=$(printf ">pdb|1ABC|A chain A\nMKV\n" | make_db prot -parse_seqids)
 "${SWIPE}" \
     --db "${DB}" \
@@ -725,9 +726,9 @@ DB=$(printf ">pdb|1ABC|A chain A\nMKV\n" | make_db prot -parse_seqids)
 remove_db "${DB}"
 unset DB
 
-## issue 23: the size of the index file is not checked: a truncated
+## KI-23: the size of the index file is not checked: a truncated
 ## file is read beyond its end (zeros in the last memory page)
-DESCRIPTION="issue 23: truncated index file is accepted (empty database)"
+DESCRIPTION="KI-23: truncated index file is accepted (empty database)"
 DB=$(printf ">s1\nMKV\n" | make_db prot)
 head -c 4 "${DB}.pin" > "${DB}.tmp"
 mv "${DB}.tmp" "${DB}.pin"
@@ -740,7 +741,7 @@ printf ">q1\nMKV\n" | \
 remove_db "${DB}"
 unset DB
 
-DESCRIPTION="issue 23: truncated index file, exit status is 0"
+DESCRIPTION="KI-23: truncated index file, exit status is 0"
 DB=$(printf ">s1\nMKV\n" | make_db prot)
 head -c 4 "${DB}.pin" > "${DB}.tmp"
 mv "${DB}.tmp" "${DB}.pin"
@@ -752,10 +753,10 @@ printf ">q1\nMKV\n" | \
 remove_db "${DB}"
 unset DB
 
-## issue 24: the dump of a translated database (--symtype 3 or 4)
+## KI-24: the dump of a translated database (--symtype 3 or 4)
 ## prints the translation of the first frame with the nucleotide
 ## alphabet
-DESCRIPTION="issue 24: dump with --symtype 3 prints '#' characters"
+DESCRIPTION="KI-24: dump with --symtype 3 prints '#' characters"
 DB=$(printf ">s1\nACGTACGTAC\n" | make_db nucl)
 "${SWIPE}" \
     --db "${DB}" \
@@ -768,7 +769,7 @@ DB=$(printf ">s1\nACGTACGTAC\n" | make_db nucl)
 remove_db "${DB}"
 unset DB
 
-DESCRIPTION="issue 24: dump with --symtype 4 prints '#' characters"
+DESCRIPTION="KI-24: dump with --symtype 4 prints '#' characters"
 DB=$(printf ">s1\nACGTACGTAC\n" | make_db nucl)
 "${SWIPE}" \
     --db "${DB}" \
@@ -781,10 +782,10 @@ DB=$(printf ">s1\nACGTACGTAC\n" | make_db nucl)
 remove_db "${DB}"
 unset DB
 
-## issue 25: taxids are stored in a bitmap of taxid / 8 bytes, and
+## KI-25: taxids are stored in a bitmap of taxid / 8 bytes, and
 ## negative values are read as huge unsigned values (ASAN_OPTIONS
 ## makes a sanitizer build behave as a release build)
-DESCRIPTION="issue 25: very large taxid (memory allocation fails)"
+DESCRIPTION="KI-25: very large taxid (memory allocation fails)"
 DB=$(printf ">s1\nMKV\n" | make_db prot)
 printf ">q1\nMKV\n" | \
     ASAN_OPTIONS=allocator_may_return_null=1 \
@@ -797,7 +798,7 @@ printf ">q1\nMKV\n" | \
 remove_db "${DB}"
 unset DB
 
-DESCRIPTION="issue 25: negative taxid (memory allocation fails)"
+DESCRIPTION="KI-25: negative taxid (memory allocation fails)"
 DB=$(printf ">s1\nMKV\n" | make_db prot)
 printf ">q1\nMKV\n" | \
     ASAN_OPTIONS=allocator_may_return_null=1 \
@@ -817,8 +818,8 @@ unset DB
 #                                                                             #
 #*****************************************************************************#
 
-## issue 26: simple XML (--outfmt 7) has one root element per query
-DESCRIPTION="issue 26: XML, several queries produce several root elements"
+## KI-26: simple XML (--outfmt 7) has one root element per query
+DESCRIPTION="KI-26: XML, several queries produce several root elements"
 DB=$(printf ">s1\nMKV\n" | make_db prot)
 printf ">q1\nMKV\n>q2\nMKV\n" | \
     "${SWIPE}" \
@@ -831,8 +832,8 @@ printf ">q1\nMKV\n>q2\nMKV\n" | \
 remove_db "${DB}"
 unset DB
 
-## issue 27: special characters are not escaped in XML outputs
-DESCRIPTION="issue 27: XML, '&' and '<' in descriptions are not escaped"
+## KI-27: special characters are not escaped in XML outputs
+DESCRIPTION="KI-27: XML, '&' and '<' in descriptions are not escaped"
 DB=$(printf ">s1 a&b<c\nMKV\n" | make_db prot -parse_seqids)
 printf ">q1\nMKV\n" | \
     "${SWIPE}" \
@@ -844,7 +845,7 @@ printf ">q1\nMKV\n" | \
 remove_db "${DB}"
 unset DB
 
-DESCRIPTION="issue 27: ParAlign XML, '&' and '<' in query descriptions are not escaped"
+DESCRIPTION="KI-27: ParAlign XML, '&' and '<' in query descriptions are not escaped"
 DB=$(printf ">s1\nMKV\n" | make_db prot)
 printf ">q1 a&b<c\nMKV\n" | \
     "${SWIPE}" \
@@ -856,9 +857,9 @@ printf ">q1 a&b<c\nMKV\n" | \
 remove_db "${DB}"
 unset DB
 
-## issue 28: search times are freed before they are printed in the
+## KI-28: search times are freed before they are printed in the
 ## ParAlign XML output (printf of a NULL pointer, "(null)" with glibc)
-DESCRIPTION="issue 28: ParAlign XML, search start time is (null)"
+DESCRIPTION="KI-28: ParAlign XML, search start time is (null)"
 DB=$(printf ">s1\nMKV\n" | make_db prot)
 printf ">q1\nMKV\n" | \
     "${SWIPE}" \
@@ -870,7 +871,7 @@ printf ">q1\nMKV\n" | \
 remove_db "${DB}"
 unset DB
 
-DESCRIPTION="issue 28: ParAlign XML, search completion time is (null)"
+DESCRIPTION="KI-28: ParAlign XML, search completion time is (null)"
 DB=$(printf ">s1\nMKV\n" | make_db prot)
 printf ">q1\nMKV\n" | \
     "${SWIPE}" \
@@ -882,9 +883,9 @@ printf ">q1\nMKV\n" | \
 remove_db "${DB}"
 unset DB
 
-## issue 29: blastn minus-strand hits are stored with a minus database
+## KI-29: blastn minus-strand hits are stored with a minus database
 ## strand, but the ParAlign XML output reads the query strand
-DESCRIPTION="issue 29: ParAlign XML, blastn minus-strand hit reported as +"
+DESCRIPTION="KI-29: ParAlign XML, blastn minus-strand hit reported as +"
 DB=$(printf ">s1\nAAAAAAAAAAAAAAAAAAAA\n" | make_db nucl)
 printf ">q1\nTTTTTTTTTTTTTTTTTTTT\n" | \
     "${SWIPE}" \
@@ -898,7 +899,7 @@ printf ">q1\nTTTTTTTTTTTTTTTTTTTT\n" | \
 remove_db "${DB}"
 unset DB
 
-DESCRIPTION="issue 29: ParAlign XML, blastn minus-strand hit on same strands"
+DESCRIPTION="KI-29: ParAlign XML, blastn minus-strand hit on same strands"
 DB=$(printf ">s1\nAAAAAAAAAAAAAAAAAAAA\n" | make_db nucl)
 printf ">q1\nTTTTTTTTTTTTTTTTTTTT\n" | \
     "${SWIPE}" \
@@ -912,7 +913,7 @@ printf ">q1\nTTTTTTTTTTTTTTTTTTTT\n" | \
 remove_db "${DB}"
 unset DB
 
-DESCRIPTION="issue 29: plain output, same blastn hit is on the minus strand"
+DESCRIPTION="KI-29: plain output, same blastn hit is on the minus strand"
 DB=$(printf ">s1\nAAAAAAAAAAAAAAAAAAAA\n" | make_db nucl)
 printf ">q1\nTTTTTTTTTTTTTTTTTTTT\n" | \
     "${SWIPE}" \
@@ -925,9 +926,9 @@ printf ">q1\nTTTTTTTTTTTTTTTTTTTT\n" | \
 remove_db "${DB}"
 unset DB
 
-## issue 30: the ParAlign XML output describes sound queries as
+## KI-30: the ParAlign XML output describes sound queries as
 ## nucleotide queries, and prints an empty query sequence
-DESCRIPTION="issue 30: ParAlign XML, sound query described as nucleotides"
+DESCRIPTION="KI-30: ParAlign XML, sound query described as nucleotides"
 DB=$(printf ">s1\nMKVLAW\n" | make_db prot)
 printf ">q1\nLJSKAT\n" | \
     "${SWIPE}" \
@@ -940,7 +941,7 @@ printf ">q1\nLJSKAT\n" | \
 remove_db "${DB}"
 unset DB
 
-DESCRIPTION="issue 30: ParAlign XML, sound query sequence is empty"
+DESCRIPTION="KI-30: ParAlign XML, sound query sequence is empty"
 DB=$(printf ">s1\nMKVLAW\n" | make_db prot)
 printf ">q1\nLJSKAT\n" | \
     "${SWIPE}" \
@@ -953,9 +954,9 @@ printf ">q1\nLJSKAT\n" | \
 remove_db "${DB}"
 unset DB
 
-## issue 31: ungapped and gapped statistical parameters are the same
+## KI-31: ungapped and gapped statistical parameters are the same
 ## variables in the ParAlign XML output
-DESCRIPTION="issue 31: ParAlign XML, ungapped lambda equals gapped lambda"
+DESCRIPTION="KI-31: ParAlign XML, ungapped lambda equals gapped lambda"
 DB=$(printf ">s1\nMKV\n" | make_db prot)
 printf ">q1\nMKV\n" | \
     "${SWIPE}" \
@@ -971,8 +972,8 @@ printf ">q1\nMKV\n" | \
 remove_db "${DB}"
 unset DB
 
-## issue 32: the query file name is always prefixed with "./"
-DESCRIPTION="issue 32: ParAlign XML, absolute query path is prefixed with ./"
+## KI-32: the query file name is always prefixed with "./"
+DESCRIPTION="KI-32: ParAlign XML, absolute query path is prefixed with ./"
 DB=$(printf ">s1\nMKV\n" | make_db prot)
 QUERY=$(mktemp)
 printf ">q1\nMKV\n" > "${QUERY}"
@@ -987,10 +988,10 @@ rm -f "${QUERY}"
 remove_db "${DB}"
 unset DB QUERY
 
-## issue 33: the search speed is a division by the elapsed time
+## KI-33: the search speed is a division by the elapsed time
 ## (zero for small searches) and by the query length (zero for empty
 ## queries)
-DESCRIPTION="issue 33: speed is infinite for very short searches"
+DESCRIPTION="KI-33: speed is infinite for very short searches"
 DB=$(printf ">s1\nMKV\n" | make_db prot)
 printf ">q1\nMKV\n" | \
     "${SWIPE}" \
@@ -1001,7 +1002,7 @@ printf ">q1\nMKV\n" | \
 remove_db "${DB}"
 unset DB
 
-DESCRIPTION="issue 33: speed is not a number for empty queries"
+DESCRIPTION="KI-33: speed is not a number for empty queries"
 DB=$(printf ">s1\nMKV\n" | make_db prot)
 printf ">q1\n" | \
     "${SWIPE}" \
@@ -1012,8 +1013,8 @@ printf ">q1\n" | \
 remove_db "${DB}"
 unset DB
 
-## issue 34: typo in the parameter block
-DESCRIPTION="issue 34: typo \"Effecive\" in the parameter block"
+## KI-34: typo in the parameter block
+DESCRIPTION="KI-34: typo \"Effecive\" in the parameter block"
 DB=$(printf ">s1\nMKV\n" | make_db prot)
 printf ">q1\nMKV\n" | \
     "${SWIPE}" \
@@ -1025,9 +1026,9 @@ printf ">q1\nMKV\n" | \
 remove_db "${DB}"
 unset DB
 
-## issue 35: the error message for a missing sequence file has an
+## KI-35: the error message for a missing sequence file has an
 ## extra newline
-DESCRIPTION="issue 35: missing .psq file, error message ends with an empty line"
+DESCRIPTION="KI-35: missing .psq file, error message ends with an empty line"
 DB=$(printf ">s1\nMKV\n" | make_db prot)
 rm -f "${DB}.psq"
 printf ">q1\nMKV\n" | \
@@ -1040,10 +1041,10 @@ printf ">q1\nMKV\n" | \
 remove_db "${DB}"
 unset DB
 
-## issue 36: with tblastn, the simple XML output reports the length
+## KI-36: with tblastn, the simple XML output reports the length
 ## of the translated database sequence (amino acids), other outputs
 ## report the length of the database sequence (nucleotides)
-DESCRIPTION="issue 36: tblastn, XML length is in amino acids (6, not 22)"
+DESCRIPTION="KI-36: tblastn, XML length is in amino acids (6, not 22)"
 DB=$(printf ">n1\nGGATGAAAGTTCTGGCTTGGCC\n" | make_db nucl)
 printf ">q1\nMKVLAW\n" | \
     "${SWIPE}" \

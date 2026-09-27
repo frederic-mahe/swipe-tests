@@ -222,9 +222,12 @@ DESCRIPTION="unknown option: usage message is written to stdout"
     success "${DESCRIPTION}" || \
         failure "${DESCRIPTION}"
 
+## getopt messages differ between glibc ("invalid option -- 'Z'") and
+## the BSD libc of macOS ("invalid option -- Z", or "illegal"/"unknown"
+## in older versions)
 DESCRIPTION="unknown option: error message is written to stderr"
 "${SWIPE}" -Z < /dev/null 2>&1 > /dev/null | \
-    grep -q "invalid option -- 'Z'" && \
+    grep -Eq "(invalid|illegal|unknown) option -- '?Z'?$" && \
     success "${DESCRIPTION}" || \
         failure "${DESCRIPTION}"
 
@@ -241,7 +244,7 @@ DESCRIPTION="missing option argument fails"
 
 DESCRIPTION="missing option argument: error message"
 "${SWIPE}" -d < /dev/null 2>&1 > /dev/null | \
-    grep -q "option requires an argument -- 'd'" && \
+    grep -Eq "option requires an argument -- '?d'?$" && \
     success "${DESCRIPTION}" || \
         failure "${DESCRIPTION}"
 
@@ -288,7 +291,7 @@ printf ">q1\nMKV\n" | \
     "${SWIPE}" \
         --db "${DB}" \
         --num 2 2>&1 > /dev/null | \
-    grep -q "option '--num' is ambiguous" && \
+    grep -Eq "option '--num' is ambiguous|ambiguous option -- num" && \
     success "${DESCRIPTION}" || \
         failure "${DESCRIPTION}"
 remove_db "${DB}"

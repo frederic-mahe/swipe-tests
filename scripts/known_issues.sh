@@ -203,36 +203,6 @@ printf ">q1\nMKV\n" | \
 remove_db "${DB}"
 unset DB
 
-## KI-25: taxids are stored in a bitmap of taxid / 8 bytes, and
-## negative values are read as huge unsigned values (ASAN_OPTIONS
-## makes a sanitizer build behave as a release build)
-DESCRIPTION="KI-25: very large taxid (memory allocation fails)"
-DB=$(printf ">s1\nMKV\n" | make_db prot)
-printf ">q1\nMKV\n" | \
-    ASAN_OPTIONS=allocator_may_return_null=1 \
-    "${SWIPE}" \
-        --db "${DB}" \
-        --taxid <(printf "18446744073709551615\n") 2>&1 | \
-    grep -qx "Unable to allocate enough memory." && \
-    success "${DESCRIPTION}" || \
-        failure "${DESCRIPTION}"
-remove_db "${DB}"
-unset DB
-
-DESCRIPTION="KI-25: negative taxid (memory allocation fails)"
-DB=$(printf ">s1\nMKV\n" | make_db prot)
-printf ">q1\nMKV\n" | \
-    ASAN_OPTIONS=allocator_may_return_null=1 \
-    "${SWIPE}" \
-        --db "${DB}" \
-        --taxid <(printf "%s\n" "-1") 2>&1 | \
-    grep -qx "Unable to allocate enough memory." && \
-    success "${DESCRIPTION}" || \
-        failure "${DESCRIPTION}"
-remove_db "${DB}"
-unset DB
-
-
 #*****************************************************************************#
 #                                                                             #
 #                               output formats                                #

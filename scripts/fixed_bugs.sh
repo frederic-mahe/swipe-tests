@@ -1522,6 +1522,93 @@ DUMP4=$("${SWIPE}" --db "${DB}" --symtype 4 --dump 1 < /dev/null)
 remove_db "${DB}"
 unset DB DUMP0 DUMP3 DUMP4
 
+## KI-25: taxids were read with fscanf("%lu"): negative values became
+## huge unsigned values, and huge values made the taxid bitmap
+## (taxid / 8 bytes) too large to allocate. Taxids are now checked:
+## decimal digits only, below 2^31 (as NCBI taxids)
+DESCRIPTION="KI-25: very large taxid is rejected"
+DB=$(printf ">s1\nMKV\n" | make_db prot)
+TAXIDS=$(mktemp)
+printf "18446744073709551615\n" > "${TAXIDS}"
+printf ">q1\nMKV\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --taxidlist "${TAXIDS}" 2>&1 | \
+    grep -qx "Illegal taxid on line 1 of taxid file ${TAXIDS}." && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+rm -f "${TAXIDS}"
+remove_db "${DB}"
+unset DB TAXIDS
+
+DESCRIPTION="KI-25: negative taxid is rejected"
+DB=$(printf ">s1\nMKV\n" | make_db prot)
+TAXIDS=$(mktemp)
+printf "%s\n" "-1" > "${TAXIDS}"
+printf ">q1\nMKV\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --taxidlist "${TAXIDS}" 2>&1 | \
+    grep -qx "Illegal taxid on line 1 of taxid file ${TAXIDS}." && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+rm -f "${TAXIDS}"
+remove_db "${DB}"
+unset DB TAXIDS
+
+DESCRIPTION="KI-25: taxid 2^31 is rejected"
+DB=$(printf ">s1\nMKV\n" | make_db prot)
+TAXIDS=$(mktemp)
+printf "2147483648\n" > "${TAXIDS}"
+printf ">q1\nMKV\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --taxidlist "${TAXIDS}" 2>&1 | \
+    grep -qx "Illegal taxid on line 1 of taxid file ${TAXIDS}." && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+rm -f "${TAXIDS}"
+remove_db "${DB}"
+unset DB TAXIDS
+
+DESCRIPTION="KI-25: invalid taxid exits with status 1"
+DB=$(printf ">s1\nMKV\n" | make_db prot)
+printf ">q1\nMKV\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --taxidlist <(printf "abc\n") > /dev/null 2>&1
+(( $? == 1 )) && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-25: line numbers count empty lines"
+DB=$(printf ">s1\nMKV\n" | make_db prot)
+printf ">q1\nMKV\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --taxidlist <(printf "9606\n\n10090\n+1\n") 2>&1 | \
+    grep -q "^Illegal taxid on line 4 of taxid file " && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-25: taxid file with Windows line endings (CRLF) is accepted"
+DB=$(printf ">s1\nMKV\n" | make_db prot -parse_seqids -taxid 9606)
+printf ">q1\nMKV\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --taxidlist <(printf "10090\r\n9606\r\n") \
+        --outfmt 8 | \
+    cut -f 2 | \
+    grep -qx "lcl|s1" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
 ## KI-27: special characters (& < > " ') were not escaped in XML
 ## outputs
 DESCRIPTION="KI-27: XML, '&' and '<' in database descriptions are escaped"

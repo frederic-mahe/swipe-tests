@@ -154,6 +154,284 @@ if [[ "${SWIPE_HAS_ASAN}" == "true" ]] ; then
     unset DB
 fi
 
+## KI-11: the 7-bit search engine received gap penalties as 8-bit
+## values: the sum of gap open and gap extension penalties wrapped
+## around (255 + 1 = 256 = 0), and the search score was wrong or the
+## alignment could not reproduce it. Penalties are now clamped to 127
+## in the 7-bit engine (exact), and the 63-bit engine uses 64-bit
+## penalties
+DESCRIPTION="KI-11: --gapopen 255 --gapextend 1 gives the right score (52)"
+DB=$(printf ">s1\nWWWAWWW\n" | make_db prot)
+printf ">q1\nWWWWWW\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --gapopen 255 \
+        --gapextend 1 \
+        --outfmt 7 | \
+    grep -qx "      <score>52</score>" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-11: --gapopen 511 --gapextend 1 gives the right score (52)"
+DB=$(printf ">s1\nWWWAWWW\n" | make_db prot)
+printf ">q1\nWWWWWW\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --gapopen 511 \
+        --gapextend 1 \
+        --outfmt 7 | \
+    grep -qx "      <score>52</score>" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-11: --gapopen 100 --gapextend 1 works (score 52)"
+DB=$(printf ">s1\nWWWAWWW\n" | make_db prot)
+printf ">q1\nWWWWWW\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --gapopen 100 \
+        --gapextend 1 \
+        --outfmt 7 | \
+    grep -qx "      <score>52</score>" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-11: --gapextend 255 gives the right score (52)"
+DB=$(printf ">s1\nWWWAWWW\n" | make_db prot)
+printf ">q1\nWWWWWW\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --gapopen 1 \
+        --gapextend 255 \
+        --outfmt 7 | \
+    grep -qx "      <score>52</score>" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-11: cheap gaps still win (--gapopen 5 --gapextend 1, score 60)"
+DB=$(printf ">s1\nWWWAWWW\n" | make_db prot)
+printf ">q1\nWWWWWW\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --gapopen 5 \
+        --gapextend 1 \
+        --outfmt 7 | \
+    grep -qx "      <score>60</score>" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+## KI-11: gap penalties above 32,767 did not fit in the 16-bit engine;
+## it is now skipped (all sequences are aligned by the 63-bit engine)
+DESCRIPTION="KI-11: --gapopen 40000 gives the right score (52)"
+DB=$(printf ">s1\nWWWAWWW\n" | make_db prot)
+printf ">q1\nWWWWWW\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --gapopen 40000 \
+        --gapextend 1 \
+        --outfmt 7 | \
+    grep -qx "      <score>52</score>" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+## KI-12: scores were stored as 8-bit values for the 7-bit search:
+## scores below -128 wrapped around, giving wrong scores or an
+## internal error. They are now clamped to -128 in the 7-bit engine
+## (exact)
+DESCRIPTION="KI-12: matrix score -200 gives the right score (20)"
+DB=$(printf ">s1\nW\n" | make_db prot)
+MATRIX=$(mktemp)
+printf "   A  W\nA  5 -200\nW -200 20\n" > "${MATRIX}"
+printf ">q1\nWAW\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --matrix "${MATRIX}" \
+        --gapopen 10 \
+        --gapextend 1 \
+        --outfmt 7 | \
+    grep -qx "      <score>20</score>" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+rm -f "${MATRIX}"
+remove_db "${DB}"
+unset DB MATRIX
+
+DESCRIPTION="KI-12: matrix score -100 gives the right score (20)"
+DB=$(printf ">s1\nW\n" | make_db prot)
+MATRIX=$(mktemp)
+printf "   A  W\nA  5 -100\nW -100 20\n" > "${MATRIX}"
+printf ">q1\nWAW\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --matrix "${MATRIX}" \
+        --gapopen 10 \
+        --gapextend 1 \
+        --outfmt 7 | \
+    grep -qx "      <score>20</score>" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+rm -f "${MATRIX}"
+remove_db "${DB}"
+unset DB MATRIX
+
+DESCRIPTION="KI-12: --penalty -200 finds the hit (score 5)"
+DB=$(printf ">s1\nAAAAAAAAAA\n" | make_db nucl)
+printf ">q1\nAAAAACAAAAA\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --symtype 0 \
+        --strand 1 \
+        --penalty -200 \
+        --outfmt 7 | \
+    grep -qx "      <score>5</score>" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-12: --penalty -128 finds the hit (score 5)"
+DB=$(printf ">s1\nAAAAAAAAAA\n" | make_db nucl)
+printf ">q1\nAAAAACAAAAA\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --symtype 0 \
+        --strand 1 \
+        --penalty -128 \
+        --outfmt 7 | \
+    grep -qx "      <score>5</score>" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-12: --penalty -32768 finds the hit (score 5)"
+DB=$(printf ">s1\nAAAAAAAAAA\n" | make_db nucl)
+printf ">q1\nAAAAACAAAAA\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --symtype 0 \
+        --strand 1 \
+        --penalty -32768 \
+        --outfmt 7 | \
+    grep -qx "      <score>5</score>" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-12: --penalty -40000 finds the hit (score 5)"
+DB=$(printf ">s1\nAAAAAAAAAA\n" | make_db nucl)
+printf ">q1\nAAAAACAAAAA\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --symtype 0 \
+        --strand 1 \
+        --penalty -40000 \
+        --outfmt 7 | \
+    grep -qx "      <score>5</score>" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+## KI-13: scores were stored as 16-bit values for the 16-bit search:
+## scores from 32,768 to 65,535 wrapped around to negative values, and
+## hits were lost. The 16-bit engine is now skipped when a score does
+## not fit (all sequences are aligned by the 63-bit engine)
+DESCRIPTION="KI-13: --reward 32768 finds a perfect hit"
+DB=$(printf ">s1\nACGTACGTAC\n" | make_db nucl)
+printf ">q1\nACGTACGTAC\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --symtype 0 \
+        --strand 1 \
+        --reward 32768 \
+        --penalty -1 \
+        --outfmt 7 | \
+    grep -qx "      <score>327680</score>" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-13: --reward 32767 finds a perfect hit"
+DB=$(printf ">s1\nACGTACGTAC\n" | make_db nucl)
+printf ">q1\nACGTACGTAC\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --symtype 0 \
+        --strand 1 \
+        --reward 32767 \
+        --penalty -1 \
+        --outfmt 7 | \
+    grep -qx "      <score>327670</score>" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-13: --reward 65535 finds a perfect hit"
+DB=$(printf ">s1\nACGTACGTAC\n" | make_db nucl)
+printf ">q1\nACGTACGTAC\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --symtype 0 \
+        --strand 1 \
+        --reward 65535 \
+        --penalty -1 \
+        --outfmt 7 | \
+    grep -qx "      <score>655350</score>" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-13: --reward 70000 finds a perfect hit"
+DB=$(printf ">s1\nACGTACGTAC\n" | make_db nucl)
+printf ">q1\nACGTACGTAC\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --symtype 0 \
+        --strand 1 \
+        --reward 70000 \
+        --penalty -1 \
+        --outfmt 7 | \
+    grep -qx "      <score>700000</score>" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-13: matrix score 40000 finds a perfect hit"
+DB=$(printf ">s1\nW\n" | make_db prot)
+MATRIX=$(mktemp)
+printf "   W\nW  40000\n" > "${MATRIX}"
+printf ">q1\nW\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --matrix "${MATRIX}" \
+        --gapopen 10 \
+        --gapextend 1 \
+        --outfmt 7 | \
+    grep -qx "      <score>40000</score>" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+rm -f "${MATRIX}"
+remove_db "${DB}"
+unset DB MATRIX
+
 ## KI-16: query lines were read in chunks of 2,047 characters, and
 ## the rest of a longer header was read as sequence
 DESCRIPTION="KI-16: long header does not spill into the sequence"

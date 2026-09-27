@@ -277,26 +277,6 @@ unset DB
 #                                                                             #
 #*****************************************************************************#
 
-## KI-14: a row with fewer scores than columns is accepted, and
-## the missing scores take the value of the previous score
-DESCRIPTION="KI-14: matrix file, missing score reuses the previous one"
-DB=$(printf ">s1\nA\n" | make_db prot)
-MATRIX=$(mktemp)
-printf "   A  W\nA  5\nW  3 20\n" > "${MATRIX}"
-printf ">q1\nW\n" | \
-    "${SWIPE}" \
-        --db "${DB}" \
-        --matrix "${MATRIX}" \
-        --gapopen 10 \
-        --gapextend 1 \
-        --outfmt 7 | \
-    grep -qx "      <score>5</score>" && \
-    success "${DESCRIPTION}" || \
-        failure "${DESCRIPTION}"
-rm -f "${MATRIX}"
-remove_db "${DB}"
-unset DB MATRIX
-
 ## KI-15: BLOSUM62_20 has statistical parameters and default gap
 ## penalties, but no built-in matrix
 DESCRIPTION="KI-15: BLOSUM62_20 has default gap penalties"

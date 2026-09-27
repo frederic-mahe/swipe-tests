@@ -508,6 +508,61 @@ rm -f "${MATRIX}"
 remove_db "${DB}"
 unset DB MATRIX
 
+## KI-14: a row with fewer scores than columns was accepted, and the
+## missing scores took the value of the previous score
+DESCRIPTION="KI-14: matrix file, a row with a missing score is rejected"
+DB=$(printf ">s1\nA\n" | make_db prot)
+MATRIX=$(mktemp)
+printf "   A  W\nA  5\nW  3 20\n" > "${MATRIX}"
+printf ">q1\nW\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --matrix "${MATRIX}" \
+        --gapopen 10 \
+        --gapextend 1 \
+        --outfmt 7 2>&1 > /dev/null | \
+    grep -qx "Problem parsing score matrix file." && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+rm -f "${MATRIX}"
+remove_db "${DB}"
+unset DB MATRIX
+
+DESCRIPTION="KI-14: matrix file, a row with a missing score exits with status 1"
+DB=$(printf ">s1\nA\n" | make_db prot)
+MATRIX=$(mktemp)
+printf "   A  W\nA  5\nW  3 20\n" > "${MATRIX}"
+printf ">q1\nW\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --matrix "${MATRIX}" \
+        --gapopen 10 \
+        --gapextend 1 > /dev/null 2>&1
+(( $? == 1 )) && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+rm -f "${MATRIX}"
+remove_db "${DB}"
+unset DB MATRIX
+
+DESCRIPTION="KI-14: matrix file, complete rows are accepted"
+DB=$(printf ">s1\nWWW\n" | make_db prot)
+MATRIX=$(mktemp)
+printf "   A  W\nA  5 -3\nW -3 20\n" > "${MATRIX}"
+printf ">q1\nWAW\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --matrix "${MATRIX}" \
+        --gapopen 10 \
+        --gapextend 1 \
+        --outfmt 7 | \
+    grep -qx "      <score>37</score>" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+rm -f "${MATRIX}"
+remove_db "${DB}"
+unset DB MATRIX
+
 ## KI-16: query lines were read in chunks of 2,047 characters, and
 ## the rest of a longer header was read as sequence
 DESCRIPTION="KI-16: long header does not spill into the sequence"

@@ -332,27 +332,28 @@ printf ">q1\nMKV\n" | \
 remove_db "${DB}"
 unset DB
 
-## numerical values are parsed with atol() and atof(): no error is
-## reported for non-numerical values or trailing characters
-DESCRIPTION="numerical values: trailing characters are silently ignored"
+## numerical values are parsed with strtol() and strtod(), and checked:
+## non-numerical values and trailing characters are rejected (KI-9,
+## see fixed_bugs.sh)
+DESCRIPTION="numerical values: trailing characters are rejected"
 DB=$(printf ">s1\nMKV\n" | make_db prot)
 printf ">q1\nMKV\n" | \
     "${SWIPE}" \
         --db "${DB}" \
-        --num_descriptions 7abc | \
-    grep -qx "Max matches shown: 7" && \
+        --num_descriptions 7abc 2>&1 | \
+    grep -qx "Illegal number of descriptions specified." && \
     success "${DESCRIPTION}" || \
         failure "${DESCRIPTION}"
 remove_db "${DB}"
 unset DB
 
-DESCRIPTION="numerical values: non-numerical values are read as zero"
+DESCRIPTION="numerical values: non-numerical values are rejected"
 DB=$(printf ">s1\nMKV\n" | make_db prot)
 printf ">q1\nMKV\n" | \
     "${SWIPE}" \
         --db "${DB}" \
-        --num_descriptions abc | \
-    grep -qx "Max matches shown: 0" && \
+        --num_descriptions abc 2>&1 | \
+    grep -qx "Illegal number of descriptions specified." && \
     success "${DESCRIPTION}" || \
         failure "${DESCRIPTION}"
 remove_db "${DB}"
@@ -934,14 +935,14 @@ for OUTFMT in -1 1 2 3 4 5 6 10 98 100 ; do
 done
 unset OUTFMT
 
-## atol("abc") = 0
-DESCRIPTION="--outfmt abc is read as --outfmt 0"
+## non-numerical values are rejected (KI-9, see fixed_bugs.sh)
+DESCRIPTION="--outfmt abc is rejected"
 DB=$(printf ">s1\nMKV\n" | make_db prot)
 printf ">q1\nMKV\n" | \
     "${SWIPE}" \
         --db "${DB}" \
-        --outfmt abc | \
-    grep -q "^Sequences producing significant alignments:" && \
+        --outfmt abc 2>&1 | \
+    grep -qx "Illegal view type." && \
     success "${DESCRIPTION}" || \
         failure "${DESCRIPTION}"
 remove_db "${DB}"
@@ -1005,16 +1006,15 @@ done <<EOF
 EOF
 unset NUMBER NAME DBTYPE REPORTED
 
-## names are case-sensitive, and unknown names are parsed with
-## atol(), so they silently select symtype 0 (blastn, see
-## known_issues.sh)
-DESCRIPTION="--symtype names are case-sensitive (BLASTP is read as 0)"
+## names are case-sensitive, and unknown names are rejected (KI-3,
+## see fixed_bugs.sh)
+DESCRIPTION="--symtype names are case-sensitive (BLASTP is rejected)"
 DB=$(printf ">s1\nACGT\n" | make_db nucl)
 printf ">q1\nACGT\n" | \
     "${SWIPE}" \
         --db "${DB}" \
-        --symtype BLASTP | \
-    grep -qx "Symbol type:       Nucleotide" && \
+        --symtype BLASTP 2>&1 | \
+    grep -qx "Illegal symbol type." && \
     success "${DESCRIPTION}" || \
         failure "${DESCRIPTION}"
 remove_db "${DB}"
@@ -1960,17 +1960,17 @@ for OPTION in -k --minevalue -u --max_score ; do
 done
 unset OPTION
 
-## values are not validated
+## negative values are rejected (KI-7, KI-9, see fixed_bugs.sh)
 for OPTION in --num_descriptions --num_alignments --evalue --minevalue \
                                  --min_score --max_score ; do
-    DESCRIPTION="${OPTION} accepts negative values"
+    DESCRIPTION="${OPTION} rejects negative values"
     DB=$(printf ">s1\nMKV\n" | make_db prot)
     printf ">q1\nMKV\n" | \
         "${SWIPE}" \
             --db "${DB}" \
             "${OPTION}" -1 > /dev/null 2>&1 && \
-        success "${DESCRIPTION}" || \
-            failure "${DESCRIPTION}"
+        failure "${DESCRIPTION}" || \
+            success "${DESCRIPTION}"
     remove_db "${DB}"
     unset DB
 done
@@ -2068,7 +2068,7 @@ printf ">q1\nMKV\n" | \
 remove_db "${DB}"
 unset DB
 
-for VALUE in 0 1 5 -1 abc ; do
+for VALUE in 0 1 5 -1 ; do
     DESCRIPTION="--subalignments ${VALUE} is accepted"
     DB=$(printf ">s1\nMKV\n" | make_db prot)
     printf ">q1\nMKV\n" | \
@@ -2081,6 +2081,20 @@ for VALUE in 0 1 5 -1 abc ; do
     unset DB
 done
 unset VALUE
+
+## the value is ignored, but non-numerical values are rejected (KI-9,
+## see fixed_bugs.sh)
+DESCRIPTION="--subalignments abc is rejected"
+DB=$(printf ">s1\nMKV\n" | make_db prot)
+printf ">q1\nMKV\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --subalignments abc 2>&1 | \
+    grep -qx "Illegal number of subalignments specified." && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
 
 DESCRIPTION="--subalignments has no effect on results"
 DB=$(printf ">s1\nMKV\n>s2\nMKVW\n" | make_db prot)

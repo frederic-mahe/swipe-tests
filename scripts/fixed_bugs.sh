@@ -188,6 +188,81 @@ printf ">q1\nMKV\n" | \
 remove_db "${DB}"
 unset DB
 
+## KI-3: unknown symtype names were parsed with atol() and silently
+## selected symtype 0 (blastn). Unknown names and non-numerical values
+## are now rejected, for --symtype and for --strand
+DESCRIPTION="KI-3: --symtype blastpp is rejected"
+DB=$(printf ">s1\nMKV\n" | make_db prot)
+printf ">q1\nMKV\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --symtype blastpp 2>&1 | \
+    grep -qx "Illegal symbol type." && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-3: --symtype BLASTP is rejected"
+DB=$(printf ">s1\nMKV\n" | make_db prot)
+printf ">q1\nMKV\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --symtype BLASTP 2>&1 | \
+    grep -qx "Illegal symbol type." && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-3: --symtype 1x is rejected"
+DB=$(printf ">s1\nMKV\n" | make_db prot)
+printf ">q1\nMKV\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --symtype 1x 2>&1 | \
+    grep -qx "Illegal symbol type." && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-3: --strand bothh is rejected"
+DB=$(printf ">s1\nMKV\n" | make_db prot)
+printf ">q1\nMKV\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --strand bothh 2>&1 | \
+    grep -qx "Illegal query strands specified." && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-3: --strand 3x is rejected"
+DB=$(printf ">s1\nMKV\n" | make_db prot)
+printf ">q1\nMKV\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --strand 3x 2>&1 | \
+    grep -qx "Illegal query strands specified." && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-3: --symtype blastpp exits with status 1"
+DB=$(printf ">s1\nMKV\n" | make_db prot)
+printf ">q1\nMKV\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --symtype blastpp > /dev/null 2>&1
+(( $? == 1 )) && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
 ## KI-4: the query of tblastx is a nucleotide sequence, but its minus
 ## strand could not be selected alone ("Illegal strand specified for
 ## protein query."). --strand 2 is now accepted for tblastx
@@ -261,6 +336,96 @@ printf ">q1\nMKV\n" | \
 remove_db "${DB}"
 unset DB
 
+## KI-7: an expect value of zero, negative or non-numerical (read as
+## zero) disabled the expect value filter: all hits were reported.
+## Such values are now rejected; --minevalue accepts zero (its default)
+DESCRIPTION="KI-7: --evalue 0 is rejected"
+DB=$(printf ">s1\nMKVLAAGIVGLLLAW\n>s2\nMKV\n" | make_db prot)
+printf ">q1\nMKVLAAGIVGLLLAW\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --evalue 0 2>&1 | \
+    grep -qx "Illegal expect value specified." && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-7: --evalue -1 is rejected"
+DB=$(printf ">s1\nMKVLAAGIVGLLLAW\n>s2\nMKV\n" | make_db prot)
+printf ">q1\nMKVLAAGIVGLLLAW\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --evalue -1 2>&1 | \
+    grep -qx "Illegal expect value specified." && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-7: --evalue abc is rejected"
+DB=$(printf ">s1\nMKVLAAGIVGLLLAW\n>s2\nMKV\n" | make_db prot)
+printf ">q1\nMKVLAAGIVGLLLAW\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --evalue abc 2>&1 | \
+    grep -qx "Illegal expect value specified." && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-7: --minevalue -1 is rejected"
+DB=$(printf ">s1\nMKVLAAGIVGLLLAW\n>s2\nMKV\n" | make_db prot)
+printf ">q1\nMKVLAAGIVGLLLAW\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --minevalue -1 2>&1 | \
+    grep -qx "Illegal minimum expect value specified." && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-7: --minevalue abc is rejected"
+DB=$(printf ">s1\nMKVLAAGIVGLLLAW\n>s2\nMKV\n" | make_db prot)
+printf ">q1\nMKVLAAGIVGLLLAW\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --minevalue abc 2>&1 | \
+    grep -qx "Illegal minimum expect value specified." && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-7: --evalue 1e-300 reports no hits"
+DB=$(printf ">s1\nMKVLAAGIVGLLLAW\n>s2\nMKV\n" | make_db prot)
+printf ">q1\nMKVLAAGIVGLLLAW\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --evalue 1e-300 \
+        --outfmt 8 | \
+    grep -q "." && \
+    failure "${DESCRIPTION}" || \
+        success "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-7: --minevalue 0 is accepted (all hits)"
+DB=$(printf ">s1\nMKVLAAGIVGLLLAW\n>s2\nMKV\n" | make_db prot)
+printf ">q1\nMKVLAAGIVGLLLAW\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --minevalue 0 \
+        --outfmt 8 | \
+    wc -l | \
+    grep -qx " *2" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
 ## KI-8: the output file was opened (and truncated) before the other
 ## options were checked. It is now opened once all options are checked
 DESCRIPTION="KI-8: --out is not truncated when another option is invalid"
@@ -303,6 +468,287 @@ grep -q "^q1" "${OUTPUT}" && \
 rm -f "${OUTPUT}"
 remove_db "${DB}"
 unset DB OUTPUT
+
+## KI-9: numerical values were not validated (atol and atof):
+## trailing characters were ignored, non-numerical values were read as
+## zero, and negative limits were accepted. Values are now parsed with
+## strtol() and strtod(), and checked
+DESCRIPTION="KI-9: --num_threads 2abc is rejected"
+DB=$(printf ">s1\nMKV\n" | make_db prot)
+printf ">q1\nMKV\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --num_threads 2abc 2>&1 | \
+    grep -qx "Illegal number of threads specified" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-9: --num_threads 99999999999999999999 is rejected"
+DB=$(printf ">s1\nMKV\n" | make_db prot)
+printf ">q1\nMKV\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --num_threads 99999999999999999999 2>&1 | \
+    grep -qx "Illegal number of threads specified" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-9: --num_descriptions -1 is rejected"
+DB=$(printf ">s1\nMKV\n" | make_db prot)
+printf ">q1\nMKV\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --num_descriptions -1 2>&1 | \
+    grep -qx "Illegal number of descriptions specified." && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-9: --num_alignments -1 is rejected"
+DB=$(printf ">s1\nMKV\n" | make_db prot)
+printf ">q1\nMKV\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --num_alignments -1 2>&1 | \
+    grep -qx "Illegal number of alignments specified." && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-9: --num_alignments abc is rejected"
+DB=$(printf ">s1\nMKV\n" | make_db prot)
+printf ">q1\nMKV\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --num_alignments abc 2>&1 | \
+    grep -qx "Illegal number of alignments specified." && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-9: --min_score 0 is rejected"
+DB=$(printf ">s1\nMKV\n" | make_db prot)
+printf ">q1\nMKV\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --min_score 0 2>&1 | \
+    grep -qx "Illegal minimum score specified." && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-9: --min_score -1 is rejected"
+DB=$(printf ">s1\nMKV\n" | make_db prot)
+printf ">q1\nMKV\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --min_score -1 2>&1 | \
+    grep -qx "Illegal minimum score specified." && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-9: --max_score -1 is rejected"
+DB=$(printf ">s1\nMKV\n" | make_db prot)
+printf ">q1\nMKV\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --max_score -1 2>&1 | \
+    grep -qx "Illegal maximum score specified." && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-9: --gapopen 11x is rejected"
+DB=$(printf ">s1\nMKV\n" | make_db prot)
+printf ">q1\nMKV\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --gapopen 11x 2>&1 | \
+    grep -qx "Illegal gap penalties." && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-9: --gapextend abc is rejected"
+DB=$(printf ">s1\nMKV\n" | make_db prot)
+printf ">q1\nMKV\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --gapextend abc 2>&1 | \
+    grep -qx "Illegal gap penalties." && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-9: --outfmt 8x is rejected"
+DB=$(printf ">s1\nMKV\n" | make_db prot)
+printf ">q1\nMKV\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --outfmt 8x 2>&1 | \
+    grep -qx "Illegal view type." && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-9: --dump 1x is rejected"
+DB=$(printf ">s1\nMKV\n" | make_db prot)
+printf ">q1\nMKV\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --dump 1x 2>&1 | \
+    grep -qx "Illegal dump mode." && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-9: --query_gencode 1x is rejected"
+DB=$(printf ">s1\nMKV\n" | make_db prot)
+printf ">q1\nMKV\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --query_gencode 1x 2>&1 | \
+    grep -qx "Illegal query genetic code specified." && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-9: --db_gencode 1x is rejected"
+DB=$(printf ">s1\nMKV\n" | make_db prot)
+printf ">q1\nMKV\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --db_gencode 1x 2>&1 | \
+    grep -qx "Illegal database genetic code specified." && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-9: --reward 1x is rejected"
+DB=$(printf ">s1\nMKV\n" | make_db prot)
+printf ">q1\nMKV\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --reward 1x 2>&1 | \
+    grep -qx "Illegal match reward specified." && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-9: --penalty -3x is rejected"
+DB=$(printf ">s1\nMKV\n" | make_db prot)
+printf ">q1\nMKV\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --penalty -3x 2>&1 | \
+    grep -qx "Illegal mismatch penalty specified." && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-9: --dbsize 1.5 is rejected"
+DB=$(printf ">s1\nMKV\n" | make_db prot)
+printf ">q1\nMKV\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --dbsize 1.5 2>&1 | \
+    grep -qx "Illegal effective db size specified" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-9: --dbsize abc is rejected"
+DB=$(printf ">s1\nMKV\n" | make_db prot)
+printf ">q1\nMKV\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --dbsize abc 2>&1 | \
+    grep -qx "Illegal effective db size specified" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-9: --dbsize -1e6 is rejected"
+DB=$(printf ">s1\nMKV\n" | make_db prot)
+printf ">q1\nMKV\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --dbsize -1e6 2>&1 | \
+    grep -qx "Illegal effective db size specified" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-9: an empty numerical value is rejected"
+DB=$(printf ">s1\nMKV\n" | make_db prot)
+printf ">q1\nMKV\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --num_descriptions "" 2>&1 | \
+    grep -qx "Illegal number of descriptions specified." && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-9: --dbsize 1e6 is read as 1,000,000"
+DB=$(printf ">s1\nMKV\n" | make_db prot)
+printf ">q1\nMKV\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --dbsize 1e6 | \
+    grep -qx "Effective db size: 1000000" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+## GitHub #9 (closed in 2014 without a fix): the example of the issue
+DESCRIPTION="KI-9: --dbsize 7.06e+06 is read as 7,060,000 (GitHub #9)"
+DB=$(printf ">s1\nMKV\n" | make_db prot)
+printf ">q1\nMKV\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --dbsize 7.06e+06 | \
+    grep -qx "Effective db size: 7060000" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-9: --num_descriptions 0 is accepted"
+DB=$(printf ">s1\nMKV\n" | make_db prot)
+printf ">q1\nMKV\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --num_descriptions 0 | \
+    grep -qx "Max matches shown: 0" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
 
 ## KI-10: with -v 0 and -b 0, the hit list had no room and its last
 ## entry (index -1) was read

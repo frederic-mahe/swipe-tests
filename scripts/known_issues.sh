@@ -89,20 +89,6 @@ DESCRIPTION="KI-2: --help exits with status 1"
     success "${DESCRIPTION}" || \
         failure "${DESCRIPTION}"
 
-## KI-3: unknown symtype names are parsed with atol() and silently
-## select symtype 0 (blastn)
-DESCRIPTION="KI-3: --symtype with a misspelled name selects blastn"
-DB=$(printf ">s1\nACGT\n" | make_db nucl)
-printf ">q1\nACGT\n" | \
-    "${SWIPE}" \
-        --db "${DB}" \
-        --symtype blastpp | \
-    grep -qx "Symbol type:       Nucleotide" && \
-    success "${DESCRIPTION}" || \
-        failure "${DESCRIPTION}"
-remove_db "${DB}"
-unset DB
-
 ## KI-6: zero means "default value", so a null gap open or gap
 ## extension penalty cannot be used
 DESCRIPTION="KI-6: --gapopen 0 is replaced by 11 (BLOSUM62)"
@@ -144,89 +130,6 @@ printf ">q1\nACGT\n" | \
         failure "${DESCRIPTION}"
 remove_db "${DB}"
 unset DB
-
-## KI-7: an expect value of zero (or a non-numerical value, read
-## as zero) disables the expect value filter
-DESCRIPTION="KI-7: --evalue 0 reports all hits"
-DB=$(printf ">s1\nMKVLAAGIVGLLLAW\n>s2\nMKV\n" | make_db prot)
-printf ">q1\nMKVLAAGIVGLLLAW\n" | \
-    "${SWIPE}" \
-        --db "${DB}" \
-        --evalue 0 \
-        --outfmt 8 | \
-    wc -l | \
-    grep -qx " *2" && \
-    success "${DESCRIPTION}" || \
-        failure "${DESCRIPTION}"
-remove_db "${DB}"
-unset DB
-
-DESCRIPTION="KI-7: --evalue 1e-300 reports no hits"
-DB=$(printf ">s1\nMKVLAAGIVGLLLAW\n>s2\nMKV\n" | make_db prot)
-printf ">q1\nMKVLAAGIVGLLLAW\n" | \
-    "${SWIPE}" \
-        --db "${DB}" \
-        --evalue 1e-300 \
-        --outfmt 8 | \
-    grep -q "." && \
-    failure "${DESCRIPTION}" || \
-        success "${DESCRIPTION}"
-remove_db "${DB}"
-unset DB
-
-DESCRIPTION="KI-7: --evalue -1 reports all hits"
-DB=$(printf ">s1\nMKVLAAGIVGLLLAW\n>s2\nMKV\n" | make_db prot)
-printf ">q1\nMKVLAAGIVGLLLAW\n" | \
-    "${SWIPE}" \
-        --db "${DB}" \
-        --evalue -1 \
-        --outfmt 8 | \
-    wc -l | \
-    grep -qx " *2" && \
-    success "${DESCRIPTION}" || \
-        failure "${DESCRIPTION}"
-remove_db "${DB}"
-unset DB
-
-## KI-9: numerical values are not validated (atol and atof)
-DESCRIPTION="KI-9: --num_threads 2abc is read as 2"
-DB=$(printf ">s1\nMKV\n" | make_db prot)
-printf ">q1\nMKV\n" | \
-    "${SWIPE}" \
-        --db "${DB}" \
-        --num_threads 2abc | \
-    grep -qx "Threads:           2" && \
-    success "${DESCRIPTION}" || \
-        failure "${DESCRIPTION}"
-remove_db "${DB}"
-unset DB
-
-DESCRIPTION="KI-9: --dbsize 1e6 is read as 1"
-DB=$(printf ">s1\nMKV\n" | make_db prot)
-printf ">q1\nMKV\n" | \
-    "${SWIPE}" \
-        --db "${DB}" \
-        --dbsize 1e6 | \
-    grep -qx "Effective db size: 1" && \
-    success "${DESCRIPTION}" || \
-        failure "${DESCRIPTION}"
-remove_db "${DB}"
-unset DB
-
-## GitHub #9 (closed in 2014, but the parsing did not change): the
-## example of the issue
-DESCRIPTION="KI-9: --dbsize 7.06e+06 is read as 7 (GitHub #9)"
-DB=$(printf ">s1\nMKV\n" | make_db prot)
-printf ">q1\nMKV\n" | \
-    "${SWIPE}" \
-        --db "${DB}" \
-        --dbsize 7.06e+06 | \
-    grep -qx "Effective db size: 7" && \
-    success "${DESCRIPTION}" || \
-        failure "${DESCRIPTION}"
-remove_db "${DB}"
-unset DB
-
 
 #*****************************************************************************#
 #                                                                             #

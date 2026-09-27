@@ -89,10 +89,948 @@ repeat () {
     done
 }
 
+## The sanitizer checks below need a binary built with the address
+## sanitizer (for instance with: make DEBUG=1). Against a release
+## binary the checks are skipped, not silently passed.
+SWIPE_HAS_ASAN=false
+ASAN_OPTIONS=help=1 "${SWIPE}" -h 2>&1 | \
+    grep -q "AddressSanitizer" && SWIPE_HAS_ASAN=true
+
 
 ## Regression tests for the bugs listed in the CHANGES file (swipe
 ## does not use GitHub issues). Tests are sorted by version, from the
 ## most recent to the oldest.
+
+
+#*****************************************************************************#
+#                                                                             #
+#                           2.1.2 (in development)                            #
+#                                                                             #
+#*****************************************************************************#
+##
+## Known issues fixed after 2.1.1 (KI-N: see known_issues.sh and the
+## file TBD_20260926_potential_issues.md in the swipe repository)
+
+
+## KI-10: with -v 0 and -b 0, the hit list had no room and its last
+## entry (index -1) was read
+DESCRIPTION="KI-10: -v 0 -b 0 reports no hits"
+DB=$(printf ">s1\nMKV\n" | make_db prot)
+printf ">q1\nMKV\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --num_descriptions 0 \
+        --num_alignments 0 2> /dev/null | \
+    grep -qx "No hits." && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-10: -v 0 -b 0 exit status is 0"
+DB=$(printf ">s1\nMKV\n" | make_db prot)
+printf ">q1\nMKV\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --num_descriptions 0 \
+        --num_alignments 0 > /dev/null 2>&1 && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+if [[ "${SWIPE_HAS_ASAN}" == "true" ]] ; then
+    DESCRIPTION="KI-10: -v 0 -b 0, no heap buffer overflow (ASan)"
+    DB=$(printf ">s1\nMKV\n" | make_db prot)
+    printf ">q1\nMKV\n" | \
+        "${SWIPE}" \
+            --db "${DB}" \
+            --num_descriptions 0 \
+            --num_alignments 0 2>&1 > /dev/null | \
+        grep -q "ERROR: AddressSanitizer" && \
+        failure "${DESCRIPTION}" || \
+            success "${DESCRIPTION}"
+    remove_db "${DB}"
+    unset DB
+fi
+
+## KI-11: the 7-bit search engine received gap penalties as 8-bit
+## values: the sum of gap open and gap extension penalties wrapped
+## around (255 + 1 = 256 = 0), and the search score was wrong or the
+## alignment could not reproduce it. Penalties are now clamped to 127
+## in the 7-bit engine (exact), and the 63-bit engine uses 64-bit
+## penalties
+DESCRIPTION="KI-11: --gapopen 255 --gapextend 1 gives the right score (52)"
+DB=$(printf ">s1\nWWWAWWW\n" | make_db prot)
+printf ">q1\nWWWWWW\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --gapopen 255 \
+        --gapextend 1 \
+        --outfmt 7 | \
+    grep -qx "      <score>52</score>" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-11: --gapopen 511 --gapextend 1 gives the right score (52)"
+DB=$(printf ">s1\nWWWAWWW\n" | make_db prot)
+printf ">q1\nWWWWWW\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --gapopen 511 \
+        --gapextend 1 \
+        --outfmt 7 | \
+    grep -qx "      <score>52</score>" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-11: --gapopen 100 --gapextend 1 works (score 52)"
+DB=$(printf ">s1\nWWWAWWW\n" | make_db prot)
+printf ">q1\nWWWWWW\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --gapopen 100 \
+        --gapextend 1 \
+        --outfmt 7 | \
+    grep -qx "      <score>52</score>" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-11: --gapextend 255 gives the right score (52)"
+DB=$(printf ">s1\nWWWAWWW\n" | make_db prot)
+printf ">q1\nWWWWWW\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --gapopen 1 \
+        --gapextend 255 \
+        --outfmt 7 | \
+    grep -qx "      <score>52</score>" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-11: cheap gaps still win (--gapopen 5 --gapextend 1, score 60)"
+DB=$(printf ">s1\nWWWAWWW\n" | make_db prot)
+printf ">q1\nWWWWWW\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --gapopen 5 \
+        --gapextend 1 \
+        --outfmt 7 | \
+    grep -qx "      <score>60</score>" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+## KI-11: gap penalties above 32,767 did not fit in the 16-bit engine;
+## it is now skipped (all sequences are aligned by the 63-bit engine)
+DESCRIPTION="KI-11: --gapopen 40000 gives the right score (52)"
+DB=$(printf ">s1\nWWWAWWW\n" | make_db prot)
+printf ">q1\nWWWWWW\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --gapopen 40000 \
+        --gapextend 1 \
+        --outfmt 7 | \
+    grep -qx "      <score>52</score>" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+## KI-12: scores were stored as 8-bit values for the 7-bit search:
+## scores below -128 wrapped around, giving wrong scores or an
+## internal error. They are now clamped to -128 in the 7-bit engine
+## (exact)
+DESCRIPTION="KI-12: matrix score -200 gives the right score (20)"
+DB=$(printf ">s1\nW\n" | make_db prot)
+MATRIX=$(mktemp)
+printf "   A  W\nA  5 -200\nW -200 20\n" > "${MATRIX}"
+printf ">q1\nWAW\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --matrix "${MATRIX}" \
+        --gapopen 10 \
+        --gapextend 1 \
+        --outfmt 7 | \
+    grep -qx "      <score>20</score>" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+rm -f "${MATRIX}"
+remove_db "${DB}"
+unset DB MATRIX
+
+DESCRIPTION="KI-12: matrix score -100 gives the right score (20)"
+DB=$(printf ">s1\nW\n" | make_db prot)
+MATRIX=$(mktemp)
+printf "   A  W\nA  5 -100\nW -100 20\n" > "${MATRIX}"
+printf ">q1\nWAW\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --matrix "${MATRIX}" \
+        --gapopen 10 \
+        --gapextend 1 \
+        --outfmt 7 | \
+    grep -qx "      <score>20</score>" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+rm -f "${MATRIX}"
+remove_db "${DB}"
+unset DB MATRIX
+
+DESCRIPTION="KI-12: --penalty -200 finds the hit (score 5)"
+DB=$(printf ">s1\nAAAAAAAAAA\n" | make_db nucl)
+printf ">q1\nAAAAACAAAAA\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --symtype 0 \
+        --strand 1 \
+        --penalty -200 \
+        --outfmt 7 | \
+    grep -qx "      <score>5</score>" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-12: --penalty -128 finds the hit (score 5)"
+DB=$(printf ">s1\nAAAAAAAAAA\n" | make_db nucl)
+printf ">q1\nAAAAACAAAAA\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --symtype 0 \
+        --strand 1 \
+        --penalty -128 \
+        --outfmt 7 | \
+    grep -qx "      <score>5</score>" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-12: --penalty -32768 finds the hit (score 5)"
+DB=$(printf ">s1\nAAAAAAAAAA\n" | make_db nucl)
+printf ">q1\nAAAAACAAAAA\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --symtype 0 \
+        --strand 1 \
+        --penalty -32768 \
+        --outfmt 7 | \
+    grep -qx "      <score>5</score>" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-12: --penalty -40000 finds the hit (score 5)"
+DB=$(printf ">s1\nAAAAAAAAAA\n" | make_db nucl)
+printf ">q1\nAAAAACAAAAA\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --symtype 0 \
+        --strand 1 \
+        --penalty -40000 \
+        --outfmt 7 | \
+    grep -qx "      <score>5</score>" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+## KI-13: scores were stored as 16-bit values for the 16-bit search:
+## scores from 32,768 to 65,535 wrapped around to negative values, and
+## hits were lost. The 16-bit engine is now skipped when a score does
+## not fit (all sequences are aligned by the 63-bit engine)
+DESCRIPTION="KI-13: --reward 32768 finds a perfect hit"
+DB=$(printf ">s1\nACGTACGTAC\n" | make_db nucl)
+printf ">q1\nACGTACGTAC\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --symtype 0 \
+        --strand 1 \
+        --reward 32768 \
+        --penalty -1 \
+        --outfmt 7 | \
+    grep -qx "      <score>327680</score>" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-13: --reward 32767 finds a perfect hit"
+DB=$(printf ">s1\nACGTACGTAC\n" | make_db nucl)
+printf ">q1\nACGTACGTAC\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --symtype 0 \
+        --strand 1 \
+        --reward 32767 \
+        --penalty -1 \
+        --outfmt 7 | \
+    grep -qx "      <score>327670</score>" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-13: --reward 65535 finds a perfect hit"
+DB=$(printf ">s1\nACGTACGTAC\n" | make_db nucl)
+printf ">q1\nACGTACGTAC\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --symtype 0 \
+        --strand 1 \
+        --reward 65535 \
+        --penalty -1 \
+        --outfmt 7 | \
+    grep -qx "      <score>655350</score>" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-13: --reward 70000 finds a perfect hit"
+DB=$(printf ">s1\nACGTACGTAC\n" | make_db nucl)
+printf ">q1\nACGTACGTAC\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --symtype 0 \
+        --strand 1 \
+        --reward 70000 \
+        --penalty -1 \
+        --outfmt 7 | \
+    grep -qx "      <score>700000</score>" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-13: matrix score 40000 finds a perfect hit"
+DB=$(printf ">s1\nW\n" | make_db prot)
+MATRIX=$(mktemp)
+printf "   W\nW  40000\n" > "${MATRIX}"
+printf ">q1\nW\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --matrix "${MATRIX}" \
+        --gapopen 10 \
+        --gapextend 1 \
+        --outfmt 7 | \
+    grep -qx "      <score>40000</score>" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+rm -f "${MATRIX}"
+remove_db "${DB}"
+unset DB MATRIX
+
+## KI-16: query lines were read in chunks of 2,047 characters, and
+## the rest of a longer header was read as sequence
+DESCRIPTION="KI-16: long header does not spill into the sequence"
+DB=$(printf ">s1\nMKV\n" | make_db prot)
+printf ">%sMKV\n" "$(printf "%02046d" 0)" | \
+    "${SWIPE}" \
+        --db "${DB}" | \
+    grep -qx "Query length:      0 residues" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-16: long header does not spill into the sequence (no hit)"
+DB=$(printf ">s1\nMKV\n" | make_db prot)
+printf ">%sMKV\n" "$(printf "%02046d" 0)" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --outfmt 8 | \
+    grep -q "." && \
+    failure "${DESCRIPTION}" || \
+        success "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-16: query id of 3,000 characters is reported whole"
+DB=$(printf ">s1\nMKV\n" | make_db prot)
+printf ">%s\nMKV\n" "$(printf "%03000d" 0)" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --outfmt 8 | \
+    cut -f 1 | \
+    grep -qx "$(printf "%03000d" 0)" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+## KI-17: a '>' at position 2,048 of a sequence line started a new
+## query
+DESCRIPTION="KI-17: '>' at position 2,048 of a sequence line is skipped"
+DB=$(printf ">s1\nMKV\n" | make_db prot)
+printf ">q1\n%s>MKV\n" "$(printf "%02047d" 0 | tr "0" "A")" | \
+    "${SWIPE}" \
+        --db "${DB}" | \
+    grep "^Query length:" | \
+    tr "\n" " " | \
+    grep -qx "Query length:      2050 residues " && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-17: '>' elsewhere in a sequence line is skipped"
+DB=$(printf ">s1\nMKV\n" | make_db prot)
+printf ">q1\n%s>MKV\n" "$(printf "%02046d" 0 | tr "0" "A")" | \
+    "${SWIPE}" \
+        --db "${DB}" | \
+    grep -c "^Query length:" | \
+    grep -qx "1" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+## KI-21: carriage returns were not removed from headers
+DESCRIPTION="KI-21: CRLF line endings, query id has no carriage return"
+DB=$(printf ">s1\nMKV\n" | make_db prot)
+printf ">q1\r\nMKV\r\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --outfmt 8 | \
+    cut -f 1 | \
+    grep -qx "q1" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-21: CRLF line endings, description has no carriage return"
+DB=$(printf ">s1\nMKV\n" | make_db prot)
+printf ">q1 desc\r\nMKV\r\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --outfmt 9 | \
+    grep -qx "# Query: q1 desc" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-21: CRLF line endings, empty first line is skipped"
+DB=$(printf ">s1\nMKV\n" | make_db prot)
+printf "\r\n>q1\r\nMKV\r\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --outfmt 8 | \
+    cut -f 1 | \
+    grep -qx "q1" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+## KI-18: an empty first line was read as an empty query, and the
+## rest of the query file was silently ignored
+DESCRIPTION="KI-18: empty first line, all queries are searched"
+DB=$(printf ">s1\nMKV\n" | make_db prot)
+printf "\n>q1\nMKV\n>q2\nMKV\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --outfmt 8 | \
+    cut -f 1 | \
+    tr "\n" " " | \
+    grep -qx "q1 q2 " && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-18: empty first line, no empty query is reported"
+DB=$(printf ">s1\nMKV\n" | make_db prot)
+printf "\n>q1\nMKV\n>q2\nMKV\n" | \
+    "${SWIPE}" \
+        --db "${DB}" | \
+    grep "^Query length:" | \
+    tr "\n" " " | \
+    grep -qx "Query length:      3 residues Query length:      3 residues " && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-18: several empty first lines, all queries are searched"
+DB=$(printf ">s1\nMKV\n" | make_db prot)
+printf "\n\n\n>q1\nMKV\n>q2\nMKV\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --outfmt 8 | \
+    cut -f 1 | \
+    tr "\n" " " | \
+    grep -qx "q1 q2 " && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-18: a query file made of an empty line has no query"
+DB=$(printf ">s1\nMKV\n" | make_db prot)
+printf "\n" | \
+    "${SWIPE}" \
+        --db "${DB}" | \
+    grep -q "^Query length:" && \
+    failure "${DESCRIPTION}" || \
+        success "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-18: empty first line, exit status is 0"
+DB=$(printf ">s1\nMKV\n" | make_db prot)
+printf "\n>q1\nMKV\n" | \
+    "${SWIPE}" \
+        --db "${DB}" > /dev/null && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+
+## KI-19: characters are signed, and bytes above 0x7f were negative
+## indexes in the symbol tables (query and score matrix readers)
+DESCRIPTION="KI-19: byte 0xe9 in a query is skipped"
+DB=$(printf ">s1\nMKV\n" | make_db prot)
+printf ">q1\nMK\351V\n" | \
+    "${SWIPE}" \
+        --db "${DB}" 2> /dev/null | \
+    grep -qx "Query length:      3 residues" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-19: byte 0xe9 in a score matrix file is ignored"
+DB=$(printf ">s1\nW\n" | make_db prot)
+MATRIX=$(mktemp)
+printf "   A  W \351\nA  5 -3 1\nW -3 20 1\n\351 1 1 1\n" > "${MATRIX}"
+printf ">q1\nWAW\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --matrix "${MATRIX}" \
+        --gapopen 10 \
+        --gapextend 1 \
+        --outfmt 7 2> /dev/null | \
+    grep -qx "      <score>20</score>" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+rm -f "${MATRIX}"
+remove_db "${DB}"
+unset DB MATRIX
+
+if [[ "${SWIPE_HAS_ASAN}" == "true" ]] ; then
+    DESCRIPTION="KI-19: byte 0xe9 in a query, no out-of-bounds read (ASan)"
+    DB=$(printf ">s1\nMKV\n" | make_db prot)
+    printf ">q1\nMK\351V\n" | \
+        "${SWIPE}" \
+            --db "${DB}" 2>&1 > /dev/null | \
+        grep -q "ERROR: AddressSanitizer" && \
+        failure "${DESCRIPTION}" || \
+            success "${DESCRIPTION}"
+    remove_db "${DB}"
+    unset DB
+
+    DESCRIPTION="KI-19: byte 0xe9 in a score matrix file, no out-of-bounds read (ASan)"
+    DB=$(printf ">s1\nW\n" | make_db prot)
+    MATRIX=$(mktemp)
+    printf "   A  W \351\nA  5 -3 1\nW -3 20 1\n\351 1 1 1\n" > "${MATRIX}"
+    printf ">q1\nWAW\n" | \
+        "${SWIPE}" \
+            --db "${DB}" \
+            --matrix "${MATRIX}" \
+            --gapopen 10 \
+            --gapextend 1 \
+            --outfmt 7 2>&1 > /dev/null | \
+        grep -q "ERROR: AddressSanitizer" && \
+        failure "${DESCRIPTION}" || \
+            success "${DESCRIPTION}"
+    rm -f "${MATRIX}"
+    remove_db "${DB}"
+    unset DB MATRIX
+fi
+
+## KI-22: PDB identifiers written by recent versions of makeblastdb
+## contain a chain-id field (0xA3), unknown to the ASN.1 parser (fatal
+## error). The chain-id is now read, and shown as is (as by BLAST+)
+DESCRIPTION="KI-22: PDB identifiers, search succeeds"
+DB=$(printf ">pdb|1ABC|A chain A\nMKV\n" | make_db prot -parse_seqids)
+printf ">q1\nMKV\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --outfmt 8 > /dev/null 2>&1 && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-22: PDB identifiers, tabular output shows the PDB id"
+DB=$(printf ">pdb|1ABC|A chain A\nMKV\n" | make_db prot -parse_seqids)
+printf ">q1\nMKV\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --outfmt 8 | \
+    cut -f 2 | \
+    grep -qx "pdb|1ABC|A" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-22: PDB identifiers, dump shows the PDB id and the title"
+DB=$(printf ">pdb|1ABC|A chain A\nMKV\n" | make_db prot -parse_seqids)
+"${SWIPE}" \
+    --db "${DB}" \
+    --dump 1 < /dev/null | \
+    head -n 1 | \
+    grep -qx ">pdb|1ABC|A chain A" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-22: PDB identifiers, lowercase chain is shown as is"
+DB=$(printf ">pdb|2DEF|b chain b\nMKV\n" | make_db prot -parse_seqids)
+"${SWIPE}" \
+    --db "${DB}" \
+    --dump 1 < /dev/null | \
+    head -n 1 | \
+    grep -qx ">pdb|2DEF|b chain b" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-22: PDB identifiers, multi-character chains are shown as is"
+DB=$(printf ">pdb|3GHI|AA chain AA\nMKV\n>pdb|4JKL|Lb chain Lb\nMKV\n" | make_db prot -parse_seqids)
+"${SWIPE}" \
+    --db "${DB}" \
+    --dump 1 < /dev/null | \
+    grep ">" | \
+    tr "\n" " " | \
+    grep -qx ">pdb|3GHI|AA chain AA >pdb|4JKL|Lb chain Lb " && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-22: PDB identifiers, plain output shows the PDB id"
+DB=$(printf ">pdb|1ABC|A chain A\nMKV\n" | make_db prot -parse_seqids)
+printf ">q1\nMKV\n" | \
+    "${SWIPE}" \
+        --db "${DB}" | \
+    grep -q "^>pdb|1ABC|A chain A" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+## KI-24: the dump of a translated database (--symtype 3 or 4)
+## printed the translation of the first frame with the nucleotide
+## alphabet ('###'). The nucleotide sequence is now dumped
+DESCRIPTION="KI-24: dump with --symtype 3 prints the nucleotide sequence"
+DB=$(printf ">s1\nACGTACGTAC\n" | make_db nucl)
+"${SWIPE}" \
+    --db "${DB}" \
+    --symtype 3 \
+    --dump 1 < /dev/null | \
+    tail -n 1 | \
+    grep -qx "ACGTACGTAC" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-24: dump with --symtype 4 prints the nucleotide sequence"
+DB=$(printf ">s1\nACGTACGTAC\n" | make_db nucl)
+"${SWIPE}" \
+    --db "${DB}" \
+    --symtype 4 \
+    --dump 1 < /dev/null | \
+    tail -n 1 | \
+    grep -qx "ACGTACGTAC" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-24: dumps with --symtype 0, 3 and 4 are identical (ambiguous nucleotides)"
+DB=$(printf ">s1\nACGTACGTAC\n>s2\nACGTNNRYACGTTTGA\n" | make_db nucl)
+DUMP0=$("${SWIPE}" --db "${DB}" --symtype 0 --dump 1 < /dev/null)
+DUMP3=$("${SWIPE}" --db "${DB}" --symtype 3 --dump 1 < /dev/null)
+DUMP4=$("${SWIPE}" --db "${DB}" --symtype 4 --dump 1 < /dev/null)
+[[ "${DUMP0}" == "${DUMP3}" && "${DUMP0}" == "${DUMP4}" ]] && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB DUMP0 DUMP3 DUMP4
+
+## KI-27: special characters (& < > " ') were not escaped in XML
+## outputs
+DESCRIPTION="KI-27: XML, '&' and '<' in database descriptions are escaped"
+DB=$(printf ">s1 a&b<c\nMKV\n" | make_db prot -parse_seqids)
+printf ">q1\nMKV\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --outfmt 7 | \
+    grep -qx "      <name>lcl|s1 a&amp;b&lt;c</name>" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-27: XML, quotes and '>' in database descriptions are escaped"
+DB=$(printf ">s1 5'-3' \"x\" y>z\nMKV\n" | make_db prot -parse_seqids)
+printf ">q1\nMKV\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --outfmt 7 | \
+    grep -qx "      <name>lcl|s1 5&apos;-3&apos; &quot;x&quot; y&gt;z</name>" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-27: XML, '&' in the query id is escaped"
+DB=$(printf ">s1\nMKV\n" | make_db prot)
+printf ">q1&x\nMKV\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --outfmt 7 | \
+    grep -qx "      <query>q1&amp;x</query>" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-27: ParAlign XML, '&' and '<' in query descriptions are escaped"
+DB=$(printf ">s1\nMKV\n" | make_db prot)
+printf ">q1 a&b<c\nMKV\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --outfmt 99 | \
+    grep -q "<queryDescription>q1 a&amp;b&lt;c</queryDescription>" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-27: ParAlign XML, '&' in database descriptions is escaped"
+DB=$(printf ">s1 a&b\nMKV\n" | make_db prot)
+printf ">q1\nMKV\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --outfmt 99 | \
+    grep -q "<longVersionName>s1 a&amp;b</longVersionName>" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-27: ParAlign XML, short names are truncated to 35 characters before escaping"
+DB=$(printf ">s1 %s&b\nMKV\n" "$(printf "%031d" 0)" | make_db prot)
+printf ">q1\nMKV\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --outfmt 99 | \
+    grep -q "<shortVersionName>s1 $(printf "%031d" 0)&amp;</shortVersionName>" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-27: ParAlign XML, '&' in the database title is escaped"
+DB_DIR=$(mktemp -d)
+printf ">s1\nMKV\n" | \
+    makeblastdb \
+        -dbtype prot \
+        -blastdb_version 4 \
+        -in - \
+        -title "a&b" \
+        -out "${DB_DIR}/db" > /dev/null 2>&1
+printf ">q1\nMKV\n" | \
+    "${SWIPE}" \
+        --db "${DB_DIR}/db" \
+        --outfmt 99 | \
+    grep -q "<databaseDescription>a&amp;b</databaseDescription>" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+rm -rf "${DB_DIR}"
+unset DB_DIR
+
+## KI-28: search times were freed before they were printed in the
+## ParAlign XML output (printf of a NULL pointer, "(null)" with glibc)
+DESCRIPTION="KI-28: ParAlign XML, search start time is a date"
+DB=$(printf ">s1\nMKV\n" | make_db prot)
+printf ">q1\nMKV\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --outfmt 99 | \
+    grep -Eq "<searchStarted>[A-Z][a-z]{2}, [ 0-9]{2} [A-Z][a-z]{2} [0-9]{4} [0-9]{2}:[0-9]{2}:[0-9]{2} UTC</searchStarted>" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-28: ParAlign XML, search completion time is a date"
+DB=$(printf ">s1\nMKV\n" | make_db prot)
+printf ">q1\nMKV\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --outfmt 99 | \
+    grep -Eq "<searchCompleted>[A-Z][a-z]{2}, [ 0-9]{2} [A-Z][a-z]{2} [0-9]{4} [0-9]{2}:[0-9]{2}:[0-9]{2} UTC</searchCompleted>" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-28: ParAlign XML, search times are shown for every query"
+DB=$(printf ">s1\nMKV\n" | make_db prot)
+printf ">q1\nMKV\n>q2\nMKV\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --outfmt 99 | \
+    grep -c "<searchStarted>[A-Z]" | \
+    grep -qx "2" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+## KI-29: blastn minus-strand hits are stored with a minus database
+## strand, but the ParAlign XML output read the query strand
+DESCRIPTION="KI-29: ParAlign XML, blastn minus-strand hit reported as -"
+DB=$(printf ">s1\nAAAAAAAAAAAAAAAAAAAA\n" | make_db nucl)
+printf ">q1\nTTTTTTTTTTTTTTTTTTTT\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --symtype 0 \
+        --strand 2 \
+        --outfmt 99 | \
+    grep -q "<shortVersionStrand>-</shortVersionStrand>" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-29: ParAlign XML, blastn minus-strand hit on complementary strands"
+DB=$(printf ">s1\nAAAAAAAAAAAAAAAAAAAA\n" | make_db nucl)
+printf ">q1\nTTTTTTTTTTTTTTTTTTTT\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --symtype 0 \
+        --strand 2 \
+        --outfmt 99 | \
+    grep -q "<alignmentMatchLocation>Matches on complementary strands.</alignmentMatchLocation>" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-29: plain output, same blastn hit is on the minus strand"
+DB=$(printf ">s1\nAAAAAAAAAAAAAAAAAAAA\n" | make_db nucl)
+printf ">q1\nTTTTTTTTTTTTTTTTTTTT\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --symtype 0 \
+        --strand 2 | \
+    grep -qx " Strand = Plus / Minus" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-29: ParAlign XML, blastn plus-strand hit reported as +"
+DB=$(printf ">s1\nAAAAAAAAAAAAAAAAAAAA\n" | make_db nucl)
+printf ">q1\nAAAAAAAAAAAAAAAAAAAA\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --symtype 0 \
+        --strand 1 \
+        --outfmt 99 | \
+    grep -q "<shortVersionStrand>+</shortVersionStrand>" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-29: ParAlign XML, blastn hits on both strands have distinct anchors"
+DB=$(printf ">s1\nACGTACGT\n" | make_db nucl)
+printf ">q1\nACGTACGT\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --symtype 0 \
+        --outfmt 99 | \
+    grep "<shortVersionAnchor>" | \
+    sort -u | \
+    wc -l | \
+    grep -qx " *2" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+## KI-37: with --outfmt 7, hits shown without an alignment (beyond
+## --num_alignments) reported an uninitialized <len> (0, a stale
+## value, or garbage)
+DESCRIPTION="KI-37: --outfmt 7, hit without alignment reports its length"
+DB=$(printf ">s1\nMKVLL\n" | make_db prot)
+printf ">q1\nMKV\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --num_descriptions 1 \
+        --num_alignments 0 \
+        --outfmt 7 | \
+    grep -qx "      <len>5</len>" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-37: --outfmt 7, hits with and without alignment report their lengths"
+DB=$(printf ">s1\nMKVLL\n>s2\nMKVAAA\n" | make_db prot)
+printf ">q1\nMKV\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --num_descriptions 2 \
+        --num_alignments 1 \
+        --outfmt 7 | \
+    grep "<len>" | \
+    tr -d " \n" | \
+    grep -qx "<len>6</len><len>5</len>" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-37: --outfmt 7, blastn hit without alignment reports its length"
+DB=$(printf ">s1\nACGTACGTAC\n" | make_db nucl)
+printf ">q1\nACGTACGTAC\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --symtype 0 \
+        --strand 1 \
+        --num_descriptions 1 \
+        --num_alignments 0 \
+        --outfmt 7 | \
+    grep -qx "      <len>10</len>" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
 
 
 #*****************************************************************************#

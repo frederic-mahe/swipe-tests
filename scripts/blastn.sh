@@ -813,7 +813,8 @@ printf ">q1\nACGTTGCAAGGCTTAACCGT\n" | \
 remove_db "${DB}"
 unset DB
 
-## see known_issues.sh for rewards above 32,767 and penalties below -128
+## see fixed_bugs.sh (KI-12, KI-13) for rewards above 32,767 and
+## penalties below -128
 
 
 #*****************************************************************************#

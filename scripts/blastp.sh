@@ -850,7 +850,8 @@ rm -f "${MATRIX}"
 remove_db "${DB}"
 unset DB MATRIX
 
-## see known_issues.sh for scores below -128 or above 32,767
+## see fixed_bugs.sh (KI-12, KI-13) for scores below -128 or above
+## 32,767
 
 
 #*****************************************************************************#
@@ -982,7 +983,7 @@ printf ">q1\nMKV\n" | \
 remove_db "${DB}"
 unset DB
 
-## see known_issues.sh for gap penalties above 253
+## see fixed_bugs.sh (KI-11) for gap penalties above 253
 
 
 #*****************************************************************************#
@@ -1469,7 +1470,7 @@ printf ">q1\nMKVW\n" | \
 remove_db "${DB}"
 unset DB i
 
-## see known_issues.sh for -v 0 -b 0
+## see fixed_bugs.sh (KI-10) for -v 0 -b 0
 
 
 #*****************************************************************************#

@@ -82,39 +82,6 @@ remove_db () {
 #                                                                             #
 #*****************************************************************************#
 
-## KI-1: the help message advertises --taxidlist, but the long
-## option is named --taxid
-DESCRIPTION="KI-1: help message lists --taxidlist"
-"${SWIPE}" --help 2> /dev/null | \
-    grep -q "^  -x, --taxidlist=FILE" && \
-    success "${DESCRIPTION}" || \
-        failure "${DESCRIPTION}"
-
-DESCRIPTION="KI-1: --taxidlist is rejected"
-DB=$(printf ">s1\nMKV\n" | make_db prot)
-printf ">q1\nMKV\n" | \
-    "${SWIPE}" \
-        --db "${DB}" \
-        --taxidlist <(printf "0\n") 2>&1 | \
-    grep -q "unrecognized option '--taxidlist" && \
-    success "${DESCRIPTION}" || \
-        failure "${DESCRIPTION}"
-remove_db "${DB}"
-unset DB
-
-DESCRIPTION="KI-1: --taxid is accepted"
-DB=$(printf ">s1\nMKV\n" | make_db prot)
-printf ">q1\nMKV\n" | \
-    "${SWIPE}" \
-        --db "${DB}" \
-        --taxid <(printf "0\n") \
-        --outfmt 8 | \
-    grep -q "^q1" && \
-    success "${DESCRIPTION}" || \
-        failure "${DESCRIPTION}"
-remove_db "${DB}"
-unset DB
-
 ## KI-2: --help exits with status 1 (GNU convention is 0)
 DESCRIPTION="KI-2: --help exits with status 1"
 "${SWIPE}" --help > /dev/null 2>&1

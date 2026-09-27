@@ -113,6 +113,81 @@ ASAN_OPTIONS=help=1 "${SWIPE}" -h 2>&1 | \
 ## file TBD_20260926_potential_issues.md in the swipe repository)
 
 
+## KI-1: the help message advertised --taxidlist, but the long
+## option was named --taxid. --taxidlist is now accepted, and --taxid
+## is kept as an alias
+DESCRIPTION="KI-1: help message lists --taxidlist"
+"${SWIPE}" --help 2> /dev/null | \
+    grep -q "^  -x, --taxidlist=FILE" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+
+DESCRIPTION="KI-1: --taxidlist is accepted"
+DB=$(printf ">s1\nMKV\n" | make_db prot)
+printf ">q1\nMKV\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --taxidlist <(printf "0\n") \
+        --outfmt 8 | \
+    grep -q "^q1" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-1: --taxid is accepted (alias of --taxidlist)"
+DB=$(printf ">s1\nMKV\n" | make_db prot)
+printf ">q1\nMKV\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --taxid <(printf "0\n") \
+        --outfmt 8 | \
+    grep -q "^q1" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-1: --taxidlist keeps sequences with a listed taxid"
+DB=$(printf ">s1\nMKV\n" | make_db prot -parse_seqids -taxid 9606)
+printf ">q1\nMKV\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --taxidlist <(printf "9606\n") \
+        --outfmt 8 | \
+    cut -f 2 | \
+    grep -qx "lcl|s1" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-1: --taxidlist skips sequences without a listed taxid"
+DB=$(printf ">s1\nMKV\n" | make_db prot -parse_seqids -taxid 9606)
+printf ">q1\nMKV\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --taxidlist <(printf "10090\n") \
+        --outfmt 8 | \
+    grep -q "." && \
+    failure "${DESCRIPTION}" || \
+        success "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-1: --taxid (alias) skips sequences without a listed taxid"
+DB=$(printf ">s1\nMKV\n" | make_db prot -parse_seqids -taxid 9606)
+printf ">q1\nMKV\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --taxid <(printf "10090\n") \
+        --outfmt 8 | \
+    grep -q "." && \
+    failure "${DESCRIPTION}" || \
+        success "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
 ## KI-10: with -v 0 and -b 0, the hit list had no room and its last
 ## entry (index -1) was read
 DESCRIPTION="KI-10: -v 0 -b 0 reports no hits"

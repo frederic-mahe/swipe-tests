@@ -106,19 +106,4 @@ remove_db () {
 #                                                                             #
 #*****************************************************************************#
 
-## KI-26: simple XML (--outfmt 7) has one root element per query
-DESCRIPTION="KI-26: XML, several queries produce several root elements"
-DB=$(printf ">s1\nMKV\n" | make_db prot)
-printf ">q1\nMKV\n>q2\nMKV\n" | \
-    "${SWIPE}" \
-        --db "${DB}" \
-        --outfmt 7 | \
-    grep -c "^<result>" | \
-    grep -qx "2" && \
-    success "${DESCRIPTION}" || \
-        failure "${DESCRIPTION}"
-remove_db "${DB}"
-unset DB
-
-
 exit 0

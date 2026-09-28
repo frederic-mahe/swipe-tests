@@ -425,6 +425,62 @@ rm -rf "${ALIAS_DIR}"
 unset ALIAS_DIR
 
 
+## KI-26: the simple XML output (--outfmt 7) had one root element per
+## query (<result>): with several queries, the output was not
+## well-formed XML. All results are now inside one <results> element
+DESCRIPTION="KI-26: XML, several queries produce one root element"
+DB=$(printf ">s1\nMKV\n" | make_db prot)
+printf ">q1\nMKV\n>q2\nMKV\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --outfmt 7 | \
+    grep -c "^<results>$" | \
+    grep -qx "1" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-26: XML, one result element per query"
+DB=$(printf ">s1\nMKV\n" | make_db prot)
+printf ">q1\nMKV\n>q2\nMKV\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --outfmt 7 | \
+    grep -c "^<result>$" | \
+    grep -qx "2" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-26: XML, the results element closes the output"
+DB=$(printf ">s1\nMKV\n" | make_db prot)
+printf ">q1\nMKV\n>q2\nMKV\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --outfmt 7 | \
+    tail -n 1 | \
+    grep -qx "</results>" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+## without queries, the root element is still there (and empty)
+DESCRIPTION="KI-26: XML, no query gives an empty results element"
+DB=$(printf ">s1\nMKV\n" | make_db prot)
+"${SWIPE}" \
+    --db "${DB}" \
+    --outfmt 7 < /dev/null | \
+    tr -d "\n" | \
+    grep -qx '<?xml version="1.0"?><results></results>' && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+
 ## KI-36: with tblastn and tblastx, the simple XML output (-m 7)
 ## reported the length of the translated frame (amino acids), whereas
 ## the plain and ParAlign XML outputs report the length of the

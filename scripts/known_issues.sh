@@ -189,22 +189,5 @@ printf ">q1\nMKV\n>q2\nMKV\n" | \
 remove_db "${DB}"
 unset DB
 
-## KI-36: with tblastn, the simple XML output reports the length
-## of the translated database sequence (amino acids), other outputs
-## report the length of the database sequence (nucleotides)
-DESCRIPTION="KI-36: tblastn, XML length is in amino acids (6, not 22)"
-DB=$(printf ">n1\nGGATGAAAGTTCTGGCTTGGCC\n" | make_db nucl)
-printf ">q1\nMKVLAW\n" | \
-    "${SWIPE}" \
-        --db "${DB}" \
-        --symtype 3 \
-        --outfmt 7 | \
-    grep -m 1 "<len>" | \
-    grep -qx "      <len>6</len>" && \
-    success "${DESCRIPTION}" || \
-        failure "${DESCRIPTION}"
-remove_db "${DB}"
-unset DB
-
 
 exit 0

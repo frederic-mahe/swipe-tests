@@ -138,6 +138,90 @@ DESCRIPTION="KI-2: an unknown option still exits with status 1"
         failure "${DESCRIPTION}"
 
 
+## KI-36: with tblastn and tblastx, the simple XML output (-m 7)
+## reported the length of the translated frame (amino acids), whereas
+## the plain and ParAlign XML outputs report the length of the
+## database sequence (nucleotides). All outputs now agree
+DESCRIPTION="KI-36: tblastn, XML length is in nucleotides (22, not 6)"
+DB=$(printf ">n1\nGGATGAAAGTTCTGGCTTGGCC\n" | make_db nucl)
+printf ">q1\nMKVLAW\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --symtype 3 \
+        --outfmt 7 | \
+    grep -m 1 "<len>" | \
+    grep -qx "      <len>22</len>" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-36: tblastn, XML length is the plain output length"
+DB=$(printf ">n1\nGGATGAAAGTTCTGGCTTGGCC\n" | make_db nucl)
+XML_LEN=$(printf ">q1\nMKVLAW\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --symtype 3 \
+        --outfmt 7 | \
+    sed -n "1,/<len>/ s|^ *<len>\([0-9]*\)</len>$|\1|p")
+PLAIN_LEN=$(printf ">q1\nMKVLAW\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --symtype 3 | \
+    sed -n "s/^ *Length = \([0-9]*\)$/\1/p" | \
+    head -n 1)
+[[ -n "${XML_LEN}" && "${XML_LEN}" == "${PLAIN_LEN}" ]] && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB XML_LEN PLAIN_LEN
+
+## hits shown without an alignment (beyond -b) too
+DESCRIPTION="KI-36: tblastn, XML length is in nucleotides without alignment (-b 0)"
+DB=$(printf ">n1\nGGATGAAAGTTCTGGCTTGGCC\n" | make_db nucl)
+printf ">q1\nMKVLAW\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --symtype 3 \
+        --num_alignments 0 \
+        --outfmt 7 | \
+    grep -m 1 "<len>" | \
+    grep -qx "      <len>22</len>" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-36: tblastx, XML length is in nucleotides"
+DB=$(printf ">n1\nGGATGAAAGTTCTGGCTTGGCC\n" | make_db nucl)
+printf ">q1\nATGAAAGTTCTGGCTTGG\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --symtype 4 \
+        --outfmt 7 | \
+    grep -m 1 "<len>" | \
+    grep -qx "      <len>22</len>" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+## blastx: the database is made of proteins, lengths in amino acids
+DESCRIPTION="KI-36: blastx, XML length is still in amino acids"
+DB=$(printf ">p1\nMKVLAW\n" | make_db prot)
+printf ">q1\nATGAAAGTTCTGGCTTGG\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --symtype 2 \
+        --outfmt 7 | \
+    grep -m 1 "<len>" | \
+    grep -qx "      <len>6</len>" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+
 #*****************************************************************************#
 #                                                                             #
 #                           2.1.2 (in development)                            #

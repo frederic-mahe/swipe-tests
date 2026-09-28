@@ -199,8 +199,10 @@ printf ">q1\nMKVLAW\n" | \
 remove_db "${DB}"
 unset DB
 
-## the simple XML output reports the length of the translated frame
-DESCRIPTION="tblastn: XML output, subject length in amino acids"
+## the simple XML output reports the length of the database sequence
+## in nucleotides, as the other outputs (KI-36, fixed in 2.2.0; it was
+## the length of the translated frame)
+DESCRIPTION="tblastn: XML output, subject length in nucleotides"
 DB=$(printf ">n1\nGGATGAAAGTTCTGGCTTGGCC\n" | make_db nucl)
 printf ">q1\nMKVLAW\n" | \
     "${SWIPE}" \
@@ -208,7 +210,7 @@ printf ">q1\nMKVLAW\n" | \
         --symtype 3 \
         --outfmt 7 | \
     grep -m 1 "<len>" | \
-    grep -qx "      <len>6</len>" && \
+    grep -qx "      <len>22</len>" && \
     success "${DESCRIPTION}" || \
         failure "${DESCRIPTION}"
 remove_db "${DB}"

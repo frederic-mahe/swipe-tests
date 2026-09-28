@@ -105,6 +105,41 @@ ASAN_OPTIONS=help=1 "${SWIPE}" -h 2>&1 | \
 
 #*****************************************************************************#
 #                                                                             #
+#                           2.2.0 (in development)                            #
+#                                                                             #
+#*****************************************************************************#
+##
+## Known issues fixed after 2.1.2 (KI-N: see known_issues.sh and the
+## file TBD_20260926_potential_issues.md in the swipe repository)
+
+
+## KI-2: --help exited with status 1. It now exits with status 0 (GNU
+## convention), as does the new --version option
+DESCRIPTION="KI-2: --help exits with status 0"
+"${SWIPE}" --help > /dev/null 2>&1 && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+
+DESCRIPTION="KI-2: -h exits with status 0"
+"${SWIPE}" -h > /dev/null 2>&1 && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+
+DESCRIPTION="KI-2: --version exits with status 0"
+"${SWIPE}" --version > /dev/null 2>&1 && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+
+## an invalid option still exits with status 1
+DESCRIPTION="KI-2: an unknown option still exits with status 1"
+"${SWIPE}" --unknown_option > /dev/null 2>&1
+(( $? == 1 )) && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+
+
+#*****************************************************************************#
+#                                                                             #
 #                           2.1.2 (in development)                            #
 #                                                                             #
 #*****************************************************************************#

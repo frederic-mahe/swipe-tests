@@ -82,13 +82,6 @@ remove_db () {
 #                                                                             #
 #*****************************************************************************#
 
-## KI-2: --help exits with status 1 (GNU convention is 0)
-DESCRIPTION="KI-2: --help exits with status 1"
-"${SWIPE}" --help > /dev/null 2>&1
-(( $? == 1 )) && \
-    success "${DESCRIPTION}" || \
-        failure "${DESCRIPTION}"
-
 ## KI-6: zero means "default value", so a null gap open or gap
 ## extension penalty cannot be used
 DESCRIPTION="KI-6: --gapopen 0 is replaced by 11 (BLOSUM62)"

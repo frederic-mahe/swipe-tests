@@ -127,6 +127,62 @@ unset DB
 #                                                                             #
 #*****************************************************************************#
 
+## KI-39: an alias file with a TAXIDLIST (or SEQIDLIST) line, as
+## written by blastdb_aliastool -taxidlist (-seqidlist), selects the
+## sequences of the listed taxids (or ids). swipe ignores these lines
+## and silently searches the whole database (GILIST, by contrast, is
+## rejected: "GILIST in database alias files not implemented.")
+DESCRIPTION="KI-39: alias with TAXIDLIST, sequences of other taxids are searched"
+ALIAS_DIR=$(mktemp -d)
+printf ">a1\nMKVW\n>a2\nMKVW\n" | \
+    makeblastdb -dbtype prot -blastdb_version 4 -in - -title "vol" -parse_seqids \
+                -taxid_map <(printf "a1 9606\na2 10090\n") \
+                -out "${ALIAS_DIR}/vol" > /dev/null 2>&1
+printf "9606\n" > "${ALIAS_DIR}/taxids.txt"
+printf "DBLIST vol\nTAXIDLIST taxids.txt\n" > "${ALIAS_DIR}/filtered.pal"
+printf ">q1\nMKVW\n" | \
+    "${SWIPE}" \
+        --db "${ALIAS_DIR}/filtered" \
+        --outfmt 8 2> /dev/null | \
+    grep -q "lcl|a2" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+rm -rf "${ALIAS_DIR}"
+unset ALIAS_DIR
+
+DESCRIPTION="KI-39: alias with TAXIDLIST is accepted (exit status 0)"
+ALIAS_DIR=$(mktemp -d)
+printf ">a1\nMKVW\n>a2\nMKVW\n" | \
+    makeblastdb -dbtype prot -blastdb_version 4 -in - -title "vol" -parse_seqids \
+                -taxid_map <(printf "a1 9606\na2 10090\n") \
+                -out "${ALIAS_DIR}/vol" > /dev/null 2>&1
+printf "9606\n" > "${ALIAS_DIR}/taxids.txt"
+printf "DBLIST vol\nTAXIDLIST taxids.txt\n" > "${ALIAS_DIR}/filtered.pal"
+printf ">q1\nMKVW\n" | \
+    "${SWIPE}" \
+        --db "${ALIAS_DIR}/filtered" > /dev/null 2>&1 && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+rm -rf "${ALIAS_DIR}"
+unset ALIAS_DIR
+
+DESCRIPTION="KI-39: alias with SEQIDLIST, other sequences are searched"
+ALIAS_DIR=$(mktemp -d)
+printf ">a1\nMKVW\n>a2\nMKVW\n" | \
+    makeblastdb -dbtype prot -blastdb_version 4 -in - -title "vol" -parse_seqids \
+                -out "${ALIAS_DIR}/vol" > /dev/null 2>&1
+printf "DBLIST vol\nSEQIDLIST ids.bsl\n" > "${ALIAS_DIR}/filtered.pal"
+printf ">q1\nMKVW\n" | \
+    "${SWIPE}" \
+        --db "${ALIAS_DIR}/filtered" \
+        --outfmt 8 2> /dev/null | \
+    grep -c "lcl|a" | \
+    grep -qx "2" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+rm -rf "${ALIAS_DIR}"
+unset ALIAS_DIR
+
 #*****************************************************************************#
 #                                                                             #
 #                               output formats                                #

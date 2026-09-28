@@ -88,33 +88,6 @@ remove_db () {
 #                                                                             #
 #*****************************************************************************#
 
-## KI-15: BLOSUM62_20 has statistical parameters and default gap
-## penalties, but no built-in matrix
-DESCRIPTION="KI-15: BLOSUM62_20 has default gap penalties"
-DB=$(printf ">s1\nMKV\n" | make_db prot)
-printf ">q1\nMKV\n" | \
-    "${SWIPE}" \
-        --db "${DB}" \
-        --matrix BLOSUM62_20 2>&1 | \
-    grep -q "Unknown score matrix" && \
-    failure "${DESCRIPTION}" || \
-        success "${DESCRIPTION}"
-remove_db "${DB}"
-unset DB
-
-DESCRIPTION="KI-15: BLOSUM62_20 is searched as a file"
-DB=$(printf ">s1\nMKV\n" | make_db prot)
-printf ">q1\nMKV\n" | \
-    "${SWIPE}" \
-        --db "${DB}" \
-        --matrix BLOSUM62_20 2>&1 | \
-    grep -qx "Cannot open score matrix file." && \
-    success "${DESCRIPTION}" || \
-        failure "${DESCRIPTION}"
-remove_db "${DB}"
-unset DB
-
-
 #*****************************************************************************#
 #                                                                             #
 #                               query parsing                                 #

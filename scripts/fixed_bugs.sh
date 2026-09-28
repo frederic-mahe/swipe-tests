@@ -302,6 +302,59 @@ remove_db "${DB}"
 unset DB MATRIX
 
 
+## KI-15: BLOSUM62_20 had statistical parameters and default gap
+## penalties, but no built-in matrix (and no authoritative matrix
+## exists: BLAST+ disables it, NCBI distributes no file). Its
+## statistics are removed: BLOSUM62_20 is now an unknown matrix name,
+## read as a file name like any other
+DESCRIPTION="KI-15: BLOSUM62_20 has no default gap penalties"
+DB=$(printf ">s1\nMKV\n" | make_db prot)
+printf ">q1\nMKV\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --matrix BLOSUM62_20 2>&1 | \
+    grep -qx "Unknown score matrix. Gap penalties must be specified (-G and -E)." && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-15: BLOSUM62_20 with gap penalties is searched as a file"
+DB=$(printf ">s1\nMKV\n" | make_db prot)
+printf ">q1\nMKV\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --matrix BLOSUM62_20 \
+        --gapopen 100 \
+        --gapextend 10 2>&1 | \
+    grep -qx "Cannot open score matrix file." && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+## a matrix file named BLOSUM62_20 can be used, without statistics
+## (raw scores: 11 columns in the tabular output)
+DESCRIPTION="KI-15: a matrix file named BLOSUM62_20 is used without statistics"
+DB=$(printf ">s1\nMKV\n" | make_db prot)
+MATRIX_DIR=$(mktemp -d)
+printf "   M  K  V\nM 100 -20 -20\nK -20 100 -20\nV -20 -20 100\n" > "${MATRIX_DIR}/BLOSUM62_20"
+(cd "${MATRIX_DIR}" && \
+    printf ">q1\nMKV\n" | \
+        "${SWIPE}" \
+            --db "${DB}" \
+            --matrix BLOSUM62_20 \
+            --gapopen 100 \
+            --gapextend 10 \
+            --outfmt 8) | \
+    awk -F'\t' 'NF == 11 && $11 == 300 {found = 1} END {exit ! found}' && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+rm -rf "${MATRIX_DIR}"
+remove_db "${DB}"
+unset DB MATRIX_DIR
+
+
 ## KI-36: with tblastn and tblastx, the simple XML output (-m 7)
 ## reported the length of the translated frame (amino acids), whereas
 ## the plain and ParAlign XML outputs report the length of the

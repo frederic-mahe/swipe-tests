@@ -82,48 +82,6 @@ remove_db () {
 #                                                                             #
 #*****************************************************************************#
 
-## KI-6: zero means "default value", so a null gap open or gap
-## extension penalty cannot be used
-DESCRIPTION="KI-6: --gapopen 0 is replaced by 11 (BLOSUM62)"
-DB=$(printf ">s1\nMKV\n" | make_db prot)
-printf ">q1\nMKV\n" | \
-    "${SWIPE}" \
-        --db "${DB}" \
-        --gapopen 0 \
-        --gapextend 1 | \
-    grep -qx "Gap penalty:       11+1k" && \
-    success "${DESCRIPTION}" || \
-        failure "${DESCRIPTION}"
-remove_db "${DB}"
-unset DB
-
-DESCRIPTION="KI-6: --gapopen 0 is replaced by 5 (blastn)"
-DB=$(printf ">s1\nACGT\n" | make_db nucl)
-printf ">q1\nACGT\n" | \
-    "${SWIPE}" \
-        --db "${DB}" \
-        --symtype 0 \
-        --gapopen 0 | \
-    grep -qx "Gap penalty:       5+2k" && \
-    success "${DESCRIPTION}" || \
-        failure "${DESCRIPTION}"
-remove_db "${DB}"
-unset DB
-
-DESCRIPTION="KI-6: --gapextend 0 is replaced by 2 (blastn)"
-DB=$(printf ">s1\nACGT\n" | make_db nucl)
-printf ">q1\nACGT\n" | \
-    "${SWIPE}" \
-        --db "${DB}" \
-        --symtype 0 \
-        --gapopen 3 \
-        --gapextend 0 | \
-    grep -qx "Gap penalty:       3+2k" && \
-    success "${DESCRIPTION}" || \
-        failure "${DESCRIPTION}"
-remove_db "${DB}"
-unset DB
-
 #*****************************************************************************#
 #                                                                             #
 #                       search engines and score ranges                       #

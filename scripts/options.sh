@@ -1833,26 +1833,27 @@ printf ">q1\nMKV\n" | \
 remove_db "${DB}"
 unset DB
 
-## zero means "use the default value" (see known_issues.sh)
-DESCRIPTION="--gapopen 0 is replaced by the default value"
+## zero is a valid gap penalty (KI-6, fixed in 2.2.0; it was
+## replaced by the default value)
+DESCRIPTION="--gapopen 0 is accepted"
 DB=$(printf ">s1\nMKV\n" | make_db prot)
 printf ">q1\nMKV\n" | \
     "${SWIPE}" \
         --db "${DB}" \
         --gapopen 0 | \
-    grep -qx "Gap penalty:       11+1k" && \
+    grep -qx "Gap penalty:       0+1k" && \
     success "${DESCRIPTION}" || \
         failure "${DESCRIPTION}"
 remove_db "${DB}"
 unset DB
 
-DESCRIPTION="--gapextend 0 is replaced by the default value"
+DESCRIPTION="--gapextend 0 is accepted"
 DB=$(printf ">s1\nMKV\n" | make_db prot)
 printf ">q1\nMKV\n" | \
     "${SWIPE}" \
         --db "${DB}" \
         --gapextend 0 | \
-    grep -qx "Gap penalty:       11+1k" && \
+    grep -qx "Gap penalty:       11+0k" && \
     success "${DESCRIPTION}" || \
         failure "${DESCRIPTION}"
 remove_db "${DB}"

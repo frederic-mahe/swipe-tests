@@ -138,6 +138,170 @@ DESCRIPTION="KI-2: an unknown option still exits with status 1"
         failure "${DESCRIPTION}"
 
 
+## KI-6: a gap penalty of zero meant "use the default value", so a
+## null gap open or gap extension penalty could not be used (GitHub
+## #12). Zero is now a valid penalty; penalties not given still take
+## the default values
+DESCRIPTION="KI-6: --gapopen 0 is used (BLOSUM62)"
+DB=$(printf ">s1\nMKV\n" | make_db prot)
+printf ">q1\nMKV\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --gapopen 0 \
+        --gapextend 1 | \
+    grep -qx "Gap penalty:       0+1k" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-6: --gapopen 0 is used, default extension (blastn)"
+DB=$(printf ">s1\nACGT\n" | make_db nucl)
+printf ">q1\nACGT\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --symtype 0 \
+        --gapopen 0 | \
+    grep -qx "Gap penalty:       0+2k" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-6: --gapextend 0 is used (blastn)"
+DB=$(printf ">s1\nACGT\n" | make_db nucl)
+printf ">q1\nACGT\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --symtype 0 \
+        --gapopen 3 \
+        --gapextend 0 | \
+    grep -qx "Gap penalty:       3+0k" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-6: --gapopen 0 is used (sound)"
+DB=$(printf ">s1\nACGT\n" | make_db prot)
+printf ">q1\nACGT\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --symtype 5 \
+        --gapopen 0 | \
+    grep -qx "Gap penalty:       0+5k" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-6: penalties not given still take the default values"
+DB=$(printf ">s1\nMKV\n" | make_db prot)
+printf ">q1\nMKV\n" | \
+    "${SWIPE}" \
+        --db "${DB}" | \
+    grep -qx "Gap penalty:       11+1k" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+## both penalties cannot be zero (a gap would be free)
+DESCRIPTION="KI-6: --gapopen 0 --gapextend 0 is rejected"
+DB=$(printf ">s1\nMKV\n" | make_db prot)
+printf ">q1\nMKV\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --gapopen 0 \
+        --gapextend 0 2>&1 | \
+    grep -qx "Illegal gap penalties." && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+## scores: WWWWWWWW vs WWWWCCCCWWWW, 8 W/W (11 each) and a gap of
+## length 4 (0 + 4 x 1 = 4): 88 - 4 = 84 (73 with 11+1k, 83 with 5+0k)
+DESCRIPTION="KI-6: linear gap costs (0+1k), score of a gapped alignment"
+DB=$(printf ">s1\nWWWWCCCCWWWW\n" | make_db prot)
+printf ">q1\nWWWWWWWW\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --gapopen 0 \
+        --gapextend 1 \
+        --outfmt 7 | \
+    grep -qx "      <score>84</score>" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-6: free gap extension (5+0k), score of a gapped alignment"
+DB=$(printf ">s1\nWWWWCCCCWWWW\n" | make_db prot)
+printf ">q1\nWWWWWWWW\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --gapopen 5 \
+        --gapextend 0 \
+        --outfmt 7 | \
+    grep -qx "      <score>83</score>" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+## BLAST has statistics for linear gap costs with some nucleotide
+## scores (e.g. reward 1, penalty -3, gaps 0+2k): E-values are shown
+DESCRIPTION="KI-6: blastn with linear gap costs (0+2k) has statistics"
+DB=$(printf ">s1\nACGTACGTAAAAACGTACGTAC\n" | make_db nucl)
+printf ">q1\nACGTACGTACGTACGTAC\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --symtype 0 \
+        --strand 1 \
+        --gapopen 0 \
+        --gapextend 2 \
+        --outfmt 8 | \
+    awk -F'\t' 'NF == 12 && $12 > 0 {found = 1} END {exit ! found}' && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+## no statistics for these gap penalties: raw scores, no E-values
+DESCRIPTION="KI-6: blastp with linear gap costs (0+1k) has no statistics"
+DB=$(printf ">s1\nWWWWCCCCWWWW\n" | make_db prot)
+printf ">q1\nWWWWWWWW\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --gapopen 0 \
+        --gapextend 1 \
+        --outfmt 8 | \
+    awk -F'\t' 'NF == 11 && $11 == 84 {found = 1} END {exit ! found}' && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+## score matrix without default gap penalties: a penalty that is not
+## given is zero (unchanged)
+DESCRIPTION="KI-6: matrix file, --gapopen only, the extension penalty is zero"
+DB=$(printf ">s1\nWWWWCCCCWWWW\n" | make_db prot)
+MATRIX=$(mktemp)
+printf "   W  C\nW 11 -2\nC -2  9\n" > "${MATRIX}"
+printf ">q1\nWWWWWWWW\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --matrix "${MATRIX}" \
+        --gapopen 5 | \
+    grep -qx "Gap penalty:       5+0k" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+rm -f "${MATRIX}"
+remove_db "${DB}"
+unset DB MATRIX
+
+
 ## KI-36: with tblastn and tblastx, the simple XML output (-m 7)
 ## reported the length of the translated frame (amino acids), whereas
 ## the plain and ParAlign XML outputs report the length of the

@@ -588,6 +588,25 @@ printf '\xa2\x80\xa1\x80\x30\x80\xa0\x80\x02\x04\x00\x00\x07\xe9\x00\x00\xa4\x80
 remove_db "${DB}"
 unset DB
 
+## KI-42: in the long version of a ParAlign XML hit (-m 99), the gi of
+## a defline was not reset before the next defline was read: a defline
+## without gi got the gi link of the previous one. Entry with two
+## deflines (gi|123|sp|P1|A_HUMAN, sp|P2|B_MOUSE): the gi|123 link is
+## shown once in the long version
+DESCRIPTION="KI-42: ParAlign XML: a defline without gi has no gi link"
+DB=$(printf ">gi|123|sp|P1|A_HUMAN first\x01sp|P2|B_MOUSE second\nMKVLAAGIVGLLLAW\n" | \
+         make_db prot -parse_seqids)
+printf ">q1\nMKVLAAGIVGLLLAW\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --outfmt 99 | \
+    grep -c "<longVersionLinkText>gi|123</longVersionLinkText>" | \
+    grep -qx "1" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
 
 #*****************************************************************************#
 #                                                                             #

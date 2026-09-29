@@ -106,23 +106,4 @@ remove_db () {
 #                                                                             #
 #*****************************************************************************#
 
-## KI-42: in the long version of a ParAlign XML hit (-m 99), the gi of
-## a defline is not reset before the next defline is read: a defline
-## without gi gets the gi link of the previous one. Entry with two
-## deflines (gi|123|sp|P1|A_HUMAN, sp|P2|B_MOUSE): the gi|123 link is
-## shown twice
-DESCRIPTION="KI-42: ParAlign XML: a defline without gi inherits a gi link"
-DB=$(printf ">gi|123|sp|P1|A_HUMAN first\x01sp|P2|B_MOUSE second\nMKVLAAGIVGLLLAW\n" | \
-         make_db prot -parse_seqids)
-printf ">q1\nMKVLAAGIVGLLLAW\n" | \
-    "${SWIPE}" \
-        --db "${DB}" \
-        --outfmt 99 | \
-    grep -c "<longVersionLinkText>gi|123</longVersionLinkText>" | \
-    grep -qx "2" && \
-    success "${DESCRIPTION}" || \
-        failure "${DESCRIPTION}"
-remove_db "${DB}"
-unset DB
-
 exit 0

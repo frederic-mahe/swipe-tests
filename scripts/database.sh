@@ -249,8 +249,10 @@ chmod u+r "${DB}.pin"
 remove_db "${DB}"
 unset DB
 
-## current makeblastdb creates databases version 5 by default
-DESCRIPTION="database: version 5 is rejected"
+## current makeblastdb creates databases version 5 by default: they
+## are accepted since swipe 2.2.0 (rejected before, "Illegal database
+## version (must be 4)."); see the version 5 section below
+DESCRIPTION="database: version 5 is accepted"
 DB_DIR=$(mktemp -d)
 printf ">s1\nMKV\n" | \
     makeblastdb \
@@ -261,8 +263,9 @@ printf ">s1\nMKV\n" | \
         -out "${DB_DIR}/db" > /dev/null 2>&1
 printf ">q1\nMKV\n" | \
     "${SWIPE}" \
-        --db "${DB_DIR}/db" 2>&1 | \
-    grep -qx "Illegal database version (must be 4)." && \
+        --db "${DB_DIR}/db" \
+        --outfmt 8 2>&1 | \
+    grep -q "^q1" && \
     success "${DESCRIPTION}" || \
         failure "${DESCRIPTION}"
 rm -rf "${DB_DIR}"
@@ -275,7 +278,7 @@ printf '\x00\x00\x00\x03' | \
 printf ">q1\nMKV\n" | \
     "${SWIPE}" \
         --db "${DB}" 2>&1 | \
-    grep -qx "Illegal database version (must be 4)." && \
+    grep -qx "Illegal database version (must be 4 or 5)." && \
     success "${DESCRIPTION}" || \
         failure "${DESCRIPTION}"
 remove_db "${DB}"
@@ -892,6 +895,185 @@ unset DB
 
 ## see fixed_bugs.sh (KI-24) for dumps of translated databases
 ## (--symtype 3 and 4)
+
+
+#*****************************************************************************#
+#                                                                             #
+#                          database format version 5                          #
+#                                                                             #
+#*****************************************************************************#
+
+## version 5 databases (makeblastdb's default) have the same files as
+## version 4, except for two fields of the index header (a volume
+## number, and the name of an LMDB file that swipe does not need):
+## both versions of the same sequences give the same results
+
+## make_db_versions FASTA DBTYPE [makeblastdb options]: builds v4 and
+## v5 databases of the same sequences, prints the directory
+make_db_versions () {
+    local DB_DIR
+    DB_DIR=$(mktemp -d)
+    for VERSION in 4 5 ; do
+        printf "%b" "${1}" | \
+            makeblastdb -dbtype "${2}" -blastdb_version "${VERSION}" -in - \
+                        -title "test" "${@:3}" \
+                        -out "${DB_DIR}/v${VERSION}" > /dev/null 2>&1
+    done
+    printf "%s\n" "${DB_DIR}"
+}
+
+PROTEINS=">s1 first\nMKVLAAGIVGLLLAW\n>s2 second\nMKVLAAGIVG\n>s3\nWWWWWW\n"
+NUCLEOTIDES=">n1\nACGTACGTAAAACCCCGGGGTTTT\n>n2\nACGTACGTAAAACCCC\n"
+
+for OUTFMT in 0 7 8 9 ; do
+    DESCRIPTION="version 5: same results as version 4 (blastp, --outfmt ${OUTFMT})"
+    DB_DIR=$(make_db_versions "${PROTEINS}" prot)
+    [[ "$(printf ">q1\nMKVLAAGIVGLLLAW\n" | \
+          "${SWIPE}" --db "${DB_DIR}/v4" --outfmt "${OUTFMT}" 2>&1 | \
+          grep -v -E "^(Database file|Search (started|completed)|Speed|# Database):")" == \
+       "$(printf ">q1\nMKVLAAGIVGLLLAW\n" | \
+          "${SWIPE}" --db "${DB_DIR}/v5" --outfmt "${OUTFMT}" 2>&1 | \
+          grep -v -E "^(Database file|Search (started|completed)|Speed|# Database):")" ]] && \
+        success "${DESCRIPTION}" || \
+            failure "${DESCRIPTION}"
+    rm -rf "${DB_DIR}"
+    unset DB_DIR
+done
+unset OUTFMT
+
+DESCRIPTION="version 5: same results as version 4 (blastp, -parse_seqids)"
+DB_DIR=$(make_db_versions ">sp|P1|A_HUMAN alpha\nMKVLAAGIVGLLLAW\n>sp|P2|B_HUMAN beta\nMKVLAAGIVG\n" prot -parse_seqids)
+[[ "$(printf ">q1\nMKVLAAGIVGLLLAW\n" | \
+      "${SWIPE}" --db "${DB_DIR}/v4" --outfmt 8 2>&1)" == \
+   "$(printf ">q1\nMKVLAAGIVGLLLAW\n" | \
+      "${SWIPE}" --db "${DB_DIR}/v5" --outfmt 8 2>&1)" ]] && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+rm -rf "${DB_DIR}"
+unset DB_DIR
+
+DESCRIPTION="version 5: same results as version 4 (blastn, both strands)"
+DB_DIR=$(make_db_versions "${NUCLEOTIDES}" nucl)
+[[ "$(printf ">q1\nACGTACGTAAAACCCC\n" | \
+      "${SWIPE}" --db "${DB_DIR}/v4" --symtype 0 --outfmt 8 2>&1)" == \
+   "$(printf ">q1\nACGTACGTAAAACCCC\n" | \
+      "${SWIPE}" --db "${DB_DIR}/v5" --symtype 0 --outfmt 8 2>&1)" ]] && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+rm -rf "${DB_DIR}"
+unset DB_DIR
+
+DESCRIPTION="version 5: same dump as version 4 (proteins)"
+DB_DIR=$(make_db_versions "${PROTEINS}" prot)
+[[ "$("${SWIPE}" --db "${DB_DIR}/v4" --dump 1 2>&1)" == \
+   "$("${SWIPE}" --db "${DB_DIR}/v5" --dump 1 2>&1)" ]] && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+rm -rf "${DB_DIR}"
+unset DB_DIR
+
+DESCRIPTION="version 5: same dump as version 4 (nucleotides)"
+DB_DIR=$(make_db_versions "${NUCLEOTIDES}" nucl)
+[[ "$("${SWIPE}" --db "${DB_DIR}/v4" --symtype 0 --dump 1 2>&1)" == \
+   "$("${SWIPE}" --db "${DB_DIR}/v5" --symtype 0 --dump 1 2>&1)" ]] && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+rm -rf "${DB_DIR}"
+unset DB_DIR
+
+DESCRIPTION="version 5: the ParAlign XML output reports version 5"
+DB_DIR=$(make_db_versions "${PROTEINS}" prot)
+printf ">q1\nMKVLAAGIVGLLLAW\n" | \
+    "${SWIPE}" \
+        --db "${DB_DIR}/v5" \
+        --outfmt 99 2>&1 | \
+    grep -q "<databaseVersion>5</databaseVersion>" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+rm -rf "${DB_DIR}"
+unset DB_DIR
+
+## taxids are stored in the deflines of both versions
+DESCRIPTION="version 5: taxid filtering (--taxidlist)"
+DB_DIR=$(mktemp -d)
+printf ">a1\nMKVW\n>a2\nMKVW\n" | \
+    makeblastdb -dbtype prot -blastdb_version 5 -in - -title "test" \
+                -parse_seqids -taxid_map <(printf "a1 9606\na2 10090\n") \
+                -out "${DB_DIR}/v5" > /dev/null 2>&1
+printf "9606\n" > "${DB_DIR}/taxids.txt"
+printf ">q1\nMKVW\n" | \
+    "${SWIPE}" \
+        --db "${DB_DIR}/v5" \
+        --taxidlist "${DB_DIR}/taxids.txt" \
+        --outfmt 8 2>&1 | \
+    cut -f 2 | \
+    tr "\n" " " | \
+    grep -qx "lcl|a1 " && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+rm -rf "${DB_DIR}"
+unset DB_DIR
+
+DESCRIPTION="version 5: alias file listing two version 5 databases"
+DB_DIR=$(mktemp -d)
+printf ">a1\nMKVW\n" | \
+    makeblastdb -dbtype prot -blastdb_version 5 -in - -title "vol1" \
+                -out "${DB_DIR}/vol1" > /dev/null 2>&1
+printf ">b1\nMKVW\n" | \
+    makeblastdb -dbtype prot -blastdb_version 5 -in - -title "vol2" \
+                -out "${DB_DIR}/vol2" > /dev/null 2>&1
+printf "TITLE two volumes\nDBLIST vol1 vol2\n" > "${DB_DIR}/alias.pal"
+printf ">q1\nMKVW\n" | \
+    "${SWIPE}" \
+        --db "${DB_DIR}/alias" \
+        --outfmt 8 2> /dev/null | \
+    wc -l | \
+    grep -qx " *2" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+rm -rf "${DB_DIR}"
+unset DB_DIR
+
+## the index header of version 5 ends inside the LMDB file name
+DESCRIPTION="version 5: truncated index header is rejected"
+DB_DIR=$(make_db_versions "${PROTEINS}" prot)
+head -c 24 "${DB_DIR}/v5.pin" > "${DB_DIR}/short.pin"
+mv "${DB_DIR}/short.pin" "${DB_DIR}/v5.pin"
+printf ">q1\nMKV\n" | \
+    "${SWIPE}" \
+        --db "${DB_DIR}/v5" 2>&1 | \
+    grep -q "is truncated or corrupted" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+rm -rf "${DB_DIR}"
+unset DB_DIR
+
+DESCRIPTION="version 5: an LMDB name length beyond the file is rejected"
+DB_DIR=$(make_db_versions "${PROTEINS}" prot)
+## title "test" (4 bytes) at offset 16: the LMDB name length is at 20
+printf '\x7f\xff\xff\xff' | \
+    dd of="${DB_DIR}/v5.pin" bs=1 seek=20 count=4 conv=notrunc 2> /dev/null
+printf ">q1\nMKV\n" | \
+    "${SWIPE}" \
+        --db "${DB_DIR}/v5" 2>&1 | \
+    grep -q "is truncated or corrupted" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+rm -rf "${DB_DIR}"
+unset DB_DIR
+
+DESCRIPTION="version 5: version 6 is rejected"
+DB_DIR=$(make_db_versions "${PROTEINS}" prot)
+printf '\x00\x00\x00\x06' | \
+    dd of="${DB_DIR}/v5.pin" bs=1 seek=0 count=4 conv=notrunc 2> /dev/null
+printf ">q1\nMKV\n" | \
+    "${SWIPE}" \
+        --db "${DB_DIR}/v5" 2>&1 | \
+    grep -qx "Illegal database version (must be 4 or 5)." && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+rm -rf "${DB_DIR}"
+unset DB_DIR PROTEINS NUCLEOTIDES
 
 
 #*****************************************************************************#

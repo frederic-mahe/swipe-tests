@@ -129,10 +129,10 @@ DESCRIPTION="--help prints a help message"
     success "${DESCRIPTION}" || \
         failure "${DESCRIPTION}"
 
-## GNU convention is to exit with status 0 after --help
-DESCRIPTION="--help exits with status 1 (not 0)"
-"${SWIPE}" --help > /dev/null 2>&1
-(( $? == 1 )) && \
+## GNU convention is to exit with status 0 after --help (KI-2, fixed
+## in 2.2.0)
+DESCRIPTION="--help exits with status 0"
+"${SWIPE}" --help > /dev/null 2>&1 && \
     success "${DESCRIPTION}" || \
         failure "${DESCRIPTION}"
 
@@ -182,9 +182,69 @@ DESCRIPTION="--help stops swipe before the next options are parsed"
     failure "${DESCRIPTION}" || \
         success "${DESCRIPTION}"
 
-## there is no --version option
-DESCRIPTION="--version is not a valid option"
+DESCRIPTION="--help message lists --version"
+"${SWIPE}" --help 2> /dev/null | \
+    grep -Eq "^      --version +show version$" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+
+
+#*****************************************************************************#
+#                                                                             #
+#                                   version                                   #
+#                                                                             #
+#*****************************************************************************#
+
+## --version (new in 2.2.0) has no short option: -v is --num_descriptions
+DESCRIPTION="--version exits with status 0"
 "${SWIPE}" --version > /dev/null 2>&1 && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+
+DESCRIPTION="--version writes nothing to stderr"
+"${SWIPE}" --version 2>&1 > /dev/null | \
+    grep -q "." && \
+    failure "${DESCRIPTION}" || \
+        success "${DESCRIPTION}"
+
+DESCRIPTION="--version starts with the program name and version"
+"${SWIPE}" --version 2> /dev/null | \
+    head -n 1 | \
+    grep -Eqx "SWIPE [0-9]+[.][0-9]+[.][0-9]+" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+
+DESCRIPTION="--version shows the same version as --help"
+[[ "$("${SWIPE}" --version 2> /dev/null | head -n 1)" == \
+   "$("${SWIPE}" --help 2> /dev/null | head -n 1)" ]] && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+
+DESCRIPTION="--version contains the reference"
+"${SWIPE}" --version 2> /dev/null | \
+    grep -q "^Reference: T. Rognes (2011)" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+
+DESCRIPTION="--version does not print the usage"
+"${SWIPE}" --version 2> /dev/null | \
+    grep -q "^Usage: " && \
+    failure "${DESCRIPTION}" || \
+        success "${DESCRIPTION}"
+
+DESCRIPTION="--version is ignored by --help (help comes first)"
+"${SWIPE}" --help --version 2> /dev/null | \
+    grep -q "^Usage: " && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+
+DESCRIPTION="--version stops swipe before other options are checked"
+"${SWIPE}" --num_threads 0 --version > /dev/null 2>&1 && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+
+DESCRIPTION="-V is not a valid option"
+"${SWIPE}" -V > /dev/null 2>&1 && \
     failure "${DESCRIPTION}" || \
         success "${DESCRIPTION}"
 
@@ -1773,26 +1833,27 @@ printf ">q1\nMKV\n" | \
 remove_db "${DB}"
 unset DB
 
-## zero means "use the default value" (see known_issues.sh)
-DESCRIPTION="--gapopen 0 is replaced by the default value"
+## zero is a valid gap penalty (KI-6, fixed in 2.2.0; it was
+## replaced by the default value)
+DESCRIPTION="--gapopen 0 is accepted"
 DB=$(printf ">s1\nMKV\n" | make_db prot)
 printf ">q1\nMKV\n" | \
     "${SWIPE}" \
         --db "${DB}" \
         --gapopen 0 | \
-    grep -qx "Gap penalty:       11+1k" && \
+    grep -qx "Gap penalty:       0+1k" && \
     success "${DESCRIPTION}" || \
         failure "${DESCRIPTION}"
 remove_db "${DB}"
 unset DB
 
-DESCRIPTION="--gapextend 0 is replaced by the default value"
+DESCRIPTION="--gapextend 0 is accepted"
 DB=$(printf ">s1\nMKV\n" | make_db prot)
 printf ">q1\nMKV\n" | \
     "${SWIPE}" \
         --db "${DB}" \
         --gapextend 0 | \
-    grep -qx "Gap penalty:       11+1k" && \
+    grep -qx "Gap penalty:       11+0k" && \
     success "${DESCRIPTION}" || \
         failure "${DESCRIPTION}"
 remove_db "${DB}"

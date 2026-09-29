@@ -105,6 +105,468 @@ ASAN_OPTIONS=help=1 "${SWIPE}" -h 2>&1 | \
 
 #*****************************************************************************#
 #                                                                             #
+#                           2.2.0 (in development)                            #
+#                                                                             #
+#*****************************************************************************#
+##
+## Known issues fixed after 2.1.2 (KI-N: see known_issues.sh and the
+## file TBD_20260926_potential_issues.md in the swipe repository)
+
+
+## KI-2: --help exited with status 1. It now exits with status 0 (GNU
+## convention), as does the new --version option
+DESCRIPTION="KI-2: --help exits with status 0"
+"${SWIPE}" --help > /dev/null 2>&1 && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+
+DESCRIPTION="KI-2: -h exits with status 0"
+"${SWIPE}" -h > /dev/null 2>&1 && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+
+DESCRIPTION="KI-2: --version exits with status 0"
+"${SWIPE}" --version > /dev/null 2>&1 && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+
+## an invalid option still exits with status 1
+DESCRIPTION="KI-2: an unknown option still exits with status 1"
+"${SWIPE}" --unknown_option > /dev/null 2>&1
+(( $? == 1 )) && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+
+
+## KI-6: a gap penalty of zero meant "use the default value", so a
+## null gap open or gap extension penalty could not be used (GitHub
+## #12). Zero is now a valid penalty; penalties not given still take
+## the default values
+DESCRIPTION="KI-6: --gapopen 0 is used (BLOSUM62)"
+DB=$(printf ">s1\nMKV\n" | make_db prot)
+printf ">q1\nMKV\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --gapopen 0 \
+        --gapextend 1 | \
+    grep -qx "Gap penalty:       0+1k" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-6: --gapopen 0 is used, default extension (blastn)"
+DB=$(printf ">s1\nACGT\n" | make_db nucl)
+printf ">q1\nACGT\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --symtype 0 \
+        --gapopen 0 | \
+    grep -qx "Gap penalty:       0+2k" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-6: --gapextend 0 is used (blastn)"
+DB=$(printf ">s1\nACGT\n" | make_db nucl)
+printf ">q1\nACGT\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --symtype 0 \
+        --gapopen 3 \
+        --gapextend 0 | \
+    grep -qx "Gap penalty:       3+0k" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-6: --gapopen 0 is used (sound)"
+DB=$(printf ">s1\nACGT\n" | make_db prot)
+printf ">q1\nACGT\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --symtype 5 \
+        --gapopen 0 | \
+    grep -qx "Gap penalty:       0+5k" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-6: penalties not given still take the default values"
+DB=$(printf ">s1\nMKV\n" | make_db prot)
+printf ">q1\nMKV\n" | \
+    "${SWIPE}" \
+        --db "${DB}" | \
+    grep -qx "Gap penalty:       11+1k" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+## both penalties cannot be zero (a gap would be free)
+DESCRIPTION="KI-6: --gapopen 0 --gapextend 0 is rejected"
+DB=$(printf ">s1\nMKV\n" | make_db prot)
+printf ">q1\nMKV\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --gapopen 0 \
+        --gapextend 0 2>&1 | \
+    grep -qx "Illegal gap penalties." && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+## scores: WWWWWWWW vs WWWWCCCCWWWW, 8 W/W (11 each) and a gap of
+## length 4 (0 + 4 x 1 = 4): 88 - 4 = 84 (73 with 11+1k, 83 with 5+0k)
+DESCRIPTION="KI-6: linear gap costs (0+1k), score of a gapped alignment"
+DB=$(printf ">s1\nWWWWCCCCWWWW\n" | make_db prot)
+printf ">q1\nWWWWWWWW\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --gapopen 0 \
+        --gapextend 1 \
+        --outfmt 7 | \
+    grep -qx "      <score>84</score>" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-6: free gap extension (5+0k), score of a gapped alignment"
+DB=$(printf ">s1\nWWWWCCCCWWWW\n" | make_db prot)
+printf ">q1\nWWWWWWWW\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --gapopen 5 \
+        --gapextend 0 \
+        --outfmt 7 | \
+    grep -qx "      <score>83</score>" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+## BLAST has statistics for linear gap costs with some nucleotide
+## scores (e.g. reward 1, penalty -3, gaps 0+2k): E-values are shown
+DESCRIPTION="KI-6: blastn with linear gap costs (0+2k) has statistics"
+DB=$(printf ">s1\nACGTACGTAAAAACGTACGTAC\n" | make_db nucl)
+printf ">q1\nACGTACGTACGTACGTAC\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --symtype 0 \
+        --strand 1 \
+        --gapopen 0 \
+        --gapextend 2 \
+        --outfmt 8 | \
+    awk -F'\t' 'NF == 12 && $12 > 0 {found = 1} END {exit ! found}' && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+## no statistics for these gap penalties: raw scores, no E-values
+DESCRIPTION="KI-6: blastp with linear gap costs (0+1k) has no statistics"
+DB=$(printf ">s1\nWWWWCCCCWWWW\n" | make_db prot)
+printf ">q1\nWWWWWWWW\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --gapopen 0 \
+        --gapextend 1 \
+        --outfmt 8 | \
+    awk -F'\t' 'NF == 11 && $11 == 84 {found = 1} END {exit ! found}' && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+## score matrix without default gap penalties: a penalty that is not
+## given is zero (unchanged)
+DESCRIPTION="KI-6: matrix file, --gapopen only, the extension penalty is zero"
+DB=$(printf ">s1\nWWWWCCCCWWWW\n" | make_db prot)
+MATRIX=$(mktemp)
+printf "   W  C\nW 11 -2\nC -2  9\n" > "${MATRIX}"
+printf ">q1\nWWWWWWWW\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --matrix "${MATRIX}" \
+        --gapopen 5 | \
+    grep -qx "Gap penalty:       5+0k" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+rm -f "${MATRIX}"
+remove_db "${DB}"
+unset DB MATRIX
+
+
+## KI-15: BLOSUM62_20 had statistical parameters and default gap
+## penalties, but no built-in matrix (and no authoritative matrix
+## exists: BLAST+ disables it, NCBI distributes no file). Its
+## statistics are removed: BLOSUM62_20 is now an unknown matrix name,
+## read as a file name like any other
+DESCRIPTION="KI-15: BLOSUM62_20 has no default gap penalties"
+DB=$(printf ">s1\nMKV\n" | make_db prot)
+printf ">q1\nMKV\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --matrix BLOSUM62_20 2>&1 | \
+    grep -qx "Unknown score matrix. Gap penalties must be specified (-G and -E)." && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-15: BLOSUM62_20 with gap penalties is searched as a file"
+DB=$(printf ">s1\nMKV\n" | make_db prot)
+printf ">q1\nMKV\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --matrix BLOSUM62_20 \
+        --gapopen 100 \
+        --gapextend 10 2>&1 | \
+    grep -qx "Cannot open score matrix file." && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+## a matrix file named BLOSUM62_20 can be used, without statistics
+## (raw scores: 11 columns in the tabular output)
+DESCRIPTION="KI-15: a matrix file named BLOSUM62_20 is used without statistics"
+DB=$(printf ">s1\nMKV\n" | make_db prot)
+MATRIX_DIR=$(mktemp -d)
+printf "   M  K  V\nM 100 -20 -20\nK -20 100 -20\nV -20 -20 100\n" > "${MATRIX_DIR}/BLOSUM62_20"
+(cd "${MATRIX_DIR}" && \
+    printf ">q1\nMKV\n" | \
+        "${SWIPE}" \
+            --db "${DB}" \
+            --matrix BLOSUM62_20 \
+            --gapopen 100 \
+            --gapextend 10 \
+            --outfmt 8) | \
+    awk -F'\t' 'NF == 11 && $11 == 300 {found = 1} END {exit ! found}' && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+rm -rf "${MATRIX_DIR}"
+remove_db "${DB}"
+unset DB MATRIX_DIR
+
+
+## KI-39: an alias file with a TAXIDLIST (or SEQIDLIST) line, as
+## written by blastdb_aliastool -taxidlist (-seqidlist), selects the
+## sequences of the listed taxids (or ids). swipe ignored these lines
+## and silently searched the whole database. They are now rejected,
+## as GILIST is
+DESCRIPTION="KI-39: alias with TAXIDLIST is rejected"
+ALIAS_DIR=$(mktemp -d)
+printf ">a1\nMKVW\n>a2\nMKVW\n" | \
+    makeblastdb -dbtype prot -blastdb_version 4 -in - -title "vol" -parse_seqids \
+                -taxid_map <(printf "a1 9606\na2 10090\n") \
+                -out "${ALIAS_DIR}/vol" > /dev/null 2>&1
+printf "DBLIST vol\nTAXIDLIST taxids.txt\n" > "${ALIAS_DIR}/filtered.pal"
+printf ">q1\nMKVW\n" | \
+    "${SWIPE}" \
+        --db "${ALIAS_DIR}/filtered" 2>&1 | \
+    grep -qx "TAXIDLIST in database alias files not implemented." && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+rm -rf "${ALIAS_DIR}"
+unset ALIAS_DIR
+
+DESCRIPTION="KI-39: alias with TAXIDLIST, exit status is 1"
+ALIAS_DIR=$(mktemp -d)
+printf ">a1\nMKVW\n>a2\nMKVW\n" | \
+    makeblastdb -dbtype prot -blastdb_version 4 -in - -title "vol" -parse_seqids \
+                -taxid_map <(printf "a1 9606\na2 10090\n") \
+                -out "${ALIAS_DIR}/vol" > /dev/null 2>&1
+printf "DBLIST vol\nTAXIDLIST taxids.txt\n" > "${ALIAS_DIR}/filtered.pal"
+printf ">q1\nMKVW\n" | \
+    "${SWIPE}" \
+        --db "${ALIAS_DIR}/filtered" > /dev/null 2>&1
+(( $? == 1 )) && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+rm -rf "${ALIAS_DIR}"
+unset ALIAS_DIR
+
+DESCRIPTION="KI-39: alias with SEQIDLIST is rejected"
+ALIAS_DIR=$(mktemp -d)
+printf ">a1\nMKVW\n>a2\nMKVW\n" | \
+    makeblastdb -dbtype prot -blastdb_version 4 -in - -title "vol" -parse_seqids \
+                -taxid_map <(printf "a1 9606\na2 10090\n") \
+                -out "${ALIAS_DIR}/vol" > /dev/null 2>&1
+printf "DBLIST vol\nSEQIDLIST ids.bsl\n" > "${ALIAS_DIR}/filtered.pal"
+printf ">q1\nMKVW\n" | \
+    "${SWIPE}" \
+        --db "${ALIAS_DIR}/filtered" 2>&1 | \
+    grep -qx "SEQIDLIST in database alias files not implemented." && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+rm -rf "${ALIAS_DIR}"
+unset ALIAS_DIR
+
+DESCRIPTION="KI-39: alias with SEQIDLIST prints no hits"
+ALIAS_DIR=$(mktemp -d)
+printf ">a1\nMKVW\n>a2\nMKVW\n" | \
+    makeblastdb -dbtype prot -blastdb_version 4 -in - -title "vol" -parse_seqids \
+                -taxid_map <(printf "a1 9606\na2 10090\n") \
+                -out "${ALIAS_DIR}/vol" > /dev/null 2>&1
+printf "DBLIST vol\nSEQIDLIST ids.bsl\n" > "${ALIAS_DIR}/filtered.pal"
+printf ">q1\nMKVW\n" | \
+    "${SWIPE}" \
+        --db "${ALIAS_DIR}/filtered" --outfmt 8 2> /dev/null | \
+    grep -q "."; (( $? == 1 )) && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+rm -rf "${ALIAS_DIR}"
+unset ALIAS_DIR
+
+
+## KI-26: the simple XML output (--outfmt 7) had one root element per
+## query (<result>): with several queries, the output was not
+## well-formed XML. All results are now inside one <results> element
+DESCRIPTION="KI-26: XML, several queries produce one root element"
+DB=$(printf ">s1\nMKV\n" | make_db prot)
+printf ">q1\nMKV\n>q2\nMKV\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --outfmt 7 | \
+    grep -c "^<results>$" | \
+    grep -qx "1" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-26: XML, one result element per query"
+DB=$(printf ">s1\nMKV\n" | make_db prot)
+printf ">q1\nMKV\n>q2\nMKV\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --outfmt 7 | \
+    grep -c "^<result>$" | \
+    grep -qx "2" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-26: XML, the results element closes the output"
+DB=$(printf ">s1\nMKV\n" | make_db prot)
+printf ">q1\nMKV\n>q2\nMKV\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --outfmt 7 | \
+    tail -n 1 | \
+    grep -qx "</results>" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+## without queries, the root element is still there (and empty)
+DESCRIPTION="KI-26: XML, no query gives an empty results element"
+DB=$(printf ">s1\nMKV\n" | make_db prot)
+"${SWIPE}" \
+    --db "${DB}" \
+    --outfmt 7 < /dev/null | \
+    tr -d "\n" | \
+    grep -qx '<?xml version="1.0"?><results></results>' && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+
+## KI-36: with tblastn and tblastx, the simple XML output (-m 7)
+## reported the length of the translated frame (amino acids), whereas
+## the plain and ParAlign XML outputs report the length of the
+## database sequence (nucleotides). All outputs now agree
+DESCRIPTION="KI-36: tblastn, XML length is in nucleotides (22, not 6)"
+DB=$(printf ">n1\nGGATGAAAGTTCTGGCTTGGCC\n" | make_db nucl)
+printf ">q1\nMKVLAW\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --symtype 3 \
+        --outfmt 7 | \
+    grep -m 1 "<len>" | \
+    grep -qx "      <len>22</len>" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-36: tblastn, XML length is the plain output length"
+DB=$(printf ">n1\nGGATGAAAGTTCTGGCTTGGCC\n" | make_db nucl)
+XML_LEN=$(printf ">q1\nMKVLAW\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --symtype 3 \
+        --outfmt 7 | \
+    sed -n "1,/<len>/ s|^ *<len>\([0-9]*\)</len>$|\1|p")
+PLAIN_LEN=$(printf ">q1\nMKVLAW\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --symtype 3 | \
+    sed -n "s/^ *Length = \([0-9]*\)$/\1/p" | \
+    head -n 1)
+[[ -n "${XML_LEN}" && "${XML_LEN}" == "${PLAIN_LEN}" ]] && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB XML_LEN PLAIN_LEN
+
+## hits shown without an alignment (beyond -b) too
+DESCRIPTION="KI-36: tblastn, XML length is in nucleotides without alignment (-b 0)"
+DB=$(printf ">n1\nGGATGAAAGTTCTGGCTTGGCC\n" | make_db nucl)
+printf ">q1\nMKVLAW\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --symtype 3 \
+        --num_alignments 0 \
+        --outfmt 7 | \
+    grep -m 1 "<len>" | \
+    grep -qx "      <len>22</len>" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-36: tblastx, XML length is in nucleotides"
+DB=$(printf ">n1\nGGATGAAAGTTCTGGCTTGGCC\n" | make_db nucl)
+printf ">q1\nATGAAAGTTCTGGCTTGG\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --symtype 4 \
+        --outfmt 7 | \
+    grep -m 1 "<len>" | \
+    grep -qx "      <len>22</len>" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+## blastx: the database is made of proteins, lengths in amino acids
+DESCRIPTION="KI-36: blastx, XML length is still in amino acids"
+DB=$(printf ">p1\nMKVLAW\n" | make_db prot)
+printf ">q1\nATGAAAGTTCTGGCTTGG\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --symtype 2 \
+        --outfmt 7 | \
+    grep -m 1 "<len>" | \
+    grep -qx "      <len>6</len>" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+
+#*****************************************************************************#
+#                                                                             #
 #                           2.1.2 (in development)                            #
 #                                                                             #
 #*****************************************************************************#

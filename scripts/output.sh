@@ -443,15 +443,17 @@ printf ">q1\nMKVLAAGIVGLLLAW\n" | \
 remove_db "${DB}"
 unset DB
 
-DESCRIPTION="XML: result element"
+## the results of all queries are inside one root element (KI-26,
+## fixed in 2.2.0; each <result> was a root element)
+DESCRIPTION="XML: result element inside the results root element"
 DB=$(make_output_db)
 printf ">q1\nMKVLAAGIVGLLLAW\n" | \
     "${SWIPE}" \
         --db "${DB}" \
         --outfmt 7 | \
-    sed -n '2p;$p' | \
+    sed -n '2p;3p;$p' | \
     tr "\n" " " | \
-    grep -qx "<result> </result> " && \
+    grep -qx "<results> <result> </results> " && \
     success "${DESCRIPTION}" || \
         failure "${DESCRIPTION}"
 remove_db "${DB}"
@@ -587,7 +589,7 @@ printf ">q1\nPPPP\n" | \
         --db "${DB}" \
         --outfmt 7 | \
     tr -d " \n" | \
-    grep -qx '<?xmlversion="1.0"?><result><general><hitcount>0</hitcount></general><hits></hits></result>' && \
+    grep -qx '<?xmlversion="1.0"?><results><result><general><hitcount>0</hitcount></general><hits></hits></result></results>' && \
     success "${DESCRIPTION}" || \
         failure "${DESCRIPTION}"
 remove_db "${DB}"

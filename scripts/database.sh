@@ -565,15 +565,44 @@ DB=$(printf ">s1 %s\nMKV\n" "$(printf "%02045d" 0)" | make_db prot)
 remove_db "${DB}"
 unset DB
 
-## header strings are silently truncated to 2,048 characters
-## (">gnl|BL_ORD_ID|0 " + 2,048 = 2,065)
-DESCRIPTION="titles: titles longer than 2,048 characters are truncated"
+## header strings are no longer truncated to 2,048 characters (since
+## 2.2.0): the whole title is kept (">gnl|BL_ORD_ID|0 " + "s1 " + 5,000
+## = 5,020)
+DESCRIPTION="titles: titles longer than 2,048 characters are not truncated"
 DB=$(printf ">s1 %s\nMKV\n" "$(printf "%05000d" 0)" | make_db prot)
 "${SWIPE}" \
     --db "${DB}" \
     --dump 1 < /dev/null | \
     head -n 1 | \
-    awk '{exit length($0) == 2065 ? 0 : 1}' && \
+    awk '{exit length($0) == 5020 ? 0 : 1}' && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+## a title longer than the former limit of 10,240 characters per
+## defline ("Error: defline too long") is kept whole too
+## (">gnl|BL_ORD_ID|0 " + "s1 " + 20,000 = 20,020)
+DESCRIPTION="titles: a title of 20,000 characters is not truncated"
+DB=$(printf ">s1 %s\nMKV\n" "$(printf "%020000d" 0)" | make_db prot)
+"${SWIPE}" \
+    --db "${DB}" \
+    --dump 1 < /dev/null | \
+    head -n 1 | \
+    awk '{exit length($0) == 20020 ? 0 : 1}' && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="titles: a title of 20,000 characters does not prevent searches"
+DB=$(printf ">s1 %s\nMKV\n" "$(printf "%020000d" 0)" | make_db prot)
+printf ">q1\nMKV\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --outfmt 8 | \
+    cut -f 2 | \
+    grep -qx "gnl|BL_ORD_ID|0" && \
     success "${DESCRIPTION}" || \
         failure "${DESCRIPTION}"
 remove_db "${DB}"

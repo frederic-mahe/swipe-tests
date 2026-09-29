@@ -607,6 +607,79 @@ printf ">q1\nMKVLAAGIVGLLLAW\n" | \
 remove_db "${DB}"
 unset DB
 
+## KI-43: the numbers of alias files (NSEQ, LENGTH, MAXOID, MEMB_BIT)
+## and of score matrix files were not checked: a value that is not a
+## number was read as 0, characters after a number were ignored, an
+## out-of-range value was clamped, and a negative NSEQ aborted the
+## search. They are now fatal errors. The alias file selects the second
+## sequence of volume 2 (as in database.sh, masked databases).
+make_masked_alias () {
+    local ALIAS_DIR
+    ALIAS_DIR=$(mktemp -d)
+    printf ">b1\nMKVWW\n>b2\nMKVY\n" | \
+        makeblastdb -dbtype prot -blastdb_version 4 -in - -title "vol2" \
+                    -out "${ALIAS_DIR}/vol2" > /dev/null 2>&1
+    printf '\x00\x00\x00\x01\x40' > "${ALIAS_DIR}/vol2.msk"
+    printf "DBLIST vol2\nOIDLIST vol2.msk\nMEMB_BIT 1\nMAXOID 1\n%s\n" "${1}" > \
+           "${ALIAS_DIR}/alias.pal"
+    printf "%s/alias\n" "${ALIAS_DIR}"
+}
+
+for LINES in $'NSEQ abc\nLENGTH 4' $'NSEQ 1x\nLENGTH 4' $'NSEQ -3\nLENGTH 4' ; do
+    DESCRIPTION="KI-43: alias file: illegal NSEQ is a fatal error (${LINES%%$'\n'*})"
+    DB=$(make_masked_alias "${LINES}")
+    printf ">q1\nMKVW\n" | \
+        "${SWIPE}" \
+            --db "${DB}" 2>&1 > /dev/null | \
+        grep -qx "Illegal NSEQ value in database alias file." && \
+        success "${DESCRIPTION}" || \
+            failure "${DESCRIPTION}"
+    remove_db "${DB}"
+done
+unset DB LINES
+
+DESCRIPTION="KI-43: alias file: an out-of-range LENGTH is a fatal error"
+DB=$(make_masked_alias $'NSEQ 1\nLENGTH 99999999999999999999')
+printf ">q1\nMKVW\n" | \
+    "${SWIPE}" \
+        --db "${DB}" 2>&1 > /dev/null | \
+    grep -qx "Illegal LENGTH value in database alias file." && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="KI-43: alias file: white space after a number is accepted"
+DB=$(make_masked_alias $'NSEQ 1 \r\nLENGTH 4\t')
+printf ">q1\nMKVW\n" | \
+    "${SWIPE}" \
+        --db "${DB}" 2> /dev/null | \
+    grep -qx "Database size:     4 residues in 1 sequences" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+for SCORE in 99999999999999999999 20x ; do
+    DESCRIPTION="KI-43: matrix file: an illegal score is a fatal error (${SCORE})"
+    DB=$(printf ">s1\nW\n" | make_db prot)
+    MATRIX=$(mktemp)
+    printf "   A  W\nA  5 -4\nW -4 %s\n" "${SCORE}" > "${MATRIX}"
+    printf ">q1\nW\n" | \
+        "${SWIPE}" \
+            --db "${DB}" \
+            --matrix "${MATRIX}" \
+            --gapopen 10 \
+            --gapextend 1 \
+            --outfmt 7 2>&1 > /dev/null | \
+        grep -qx "Problem parsing score matrix file." && \
+        success "${DESCRIPTION}" || \
+            failure "${DESCRIPTION}"
+    rm -f "${MATRIX}"
+    remove_db "${DB}"
+done
+unset DB MATRIX SCORE
+
 
 #*****************************************************************************#
 #                                                                             #

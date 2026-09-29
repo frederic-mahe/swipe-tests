@@ -827,6 +827,33 @@ rm -f "${OUTPUT}"
 remove_db "${DB}"
 unset DB OUTPUT
 
+## a write error (here, a full device) is an error, reported once the
+## output is flushed: for --out and for stdout (/dev/full: Linux only)
+if [[ -w /dev/full ]] ; then
+    DESCRIPTION="--out a full device fails (error message)"
+    DB=$(printf ">s1\nMKV\n" | make_db prot)
+    printf ">q1\nMKV\n" | \
+        "${SWIPE}" \
+            --db "${DB}" \
+            --out /dev/full 2>&1 | \
+        grep -qx "Unable to write to output file (disk full, quota exceeded, or broken pipe?)" && \
+        success "${DESCRIPTION}" || \
+            failure "${DESCRIPTION}"
+    remove_db "${DB}"
+    unset DB
+
+    DESCRIPTION="stdout to a full device fails (exit status 1)"
+    DB=$(printf ">s1\nMKV\n" | make_db prot)
+    printf ">q1\nMKV\n" | \
+        "${SWIPE}" \
+            --db "${DB}" > /dev/full 2> /dev/null
+    [[ $? -eq 1 ]] && \
+        success "${DESCRIPTION}" || \
+            failure "${DESCRIPTION}"
+    remove_db "${DB}"
+    unset DB
+fi
+
 ## the output file is opened once the other options are checked
 ## (KI-8, see fixed_bugs.sh)
 DESCRIPTION="--out is not created when other options are invalid"

@@ -565,6 +565,30 @@ remove_db "${DB}"
 unset DB
 
 
+## KI-41: in a Date-std (the release date of a PDB identifier), the
+## hour [4] was detected, then matched with the tag of the minute [5]:
+## a date with an hour was rejected ("Unexpected object a4, expected
+## a5."). makeblastdb writes no dates, so the chain name of a PDB
+## identifier (30 bytes at offset 33 of the header file) is replaced by
+## a release date of the same length: [2] { std [1] { SEQUENCE { year
+## [0] 2025, hour [4] 12 } } }. Without a chain name, the chain is
+## shown as a space.
+DESCRIPTION="KI-41: a PDB release date with an hour is accepted"
+DB=$(printf ">pdb|1ABC|AAAAAAAAAAAAAAAAAAAAAAAA title\nMKV\n" | \
+         make_db prot -parse_seqids)
+printf '\xa2\x80\xa1\x80\x30\x80\xa0\x80\x02\x04\x00\x00\x07\xe9\x00\x00\xa4\x80\x02\x02\x00\x0c\x00\x00\x00\x00\x00\x00\x00\x00' | \
+    dd of="${DB}.phr" bs=1 seek=33 count=30 conv=notrunc 2> /dev/null
+"${SWIPE}" \
+    --db "${DB}" \
+    --dump 1 < /dev/null 2> /dev/null | \
+    head -n 1 | \
+    grep -qx ">pdb|1ABC|  title" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+
 #*****************************************************************************#
 #                                                                             #
 #                           2.1.2 (in development)                            #

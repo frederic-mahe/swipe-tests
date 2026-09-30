@@ -680,6 +680,50 @@ for SCORE in 99999999999999999999 20x ; do
 done
 unset DB MATRIX SCORE
 
+## KI-44: a second header line of a score matrix file was not
+## detected (the column list restarted, the symbol count accumulated):
+## after the last row it was ignored, before a row it gave "Problem
+## parsing score matrix file.". It is now a fatal error naming the line
+for LINES in "A  5 -4\nW -4 11\n   A  W\n" "A  5 -4\n   A  W\nW -4 11\n" ; do
+    LINE_NUMBER=$(printf "   A  W\n%b" "${LINES}" | grep -n "^   A  W$" | tail -n 1 | cut -d ":" -f 1)
+    DESCRIPTION="KI-44: matrix file: a second header line is a fatal error (line ${LINE_NUMBER})"
+    DB=$(printf ">s1\nW\n" | make_db prot)
+    MATRIX=$(mktemp)
+    printf "   A  W\n%b" "${LINES}" > "${MATRIX}"
+    printf ">q1\nW\n" | \
+        "${SWIPE}" \
+            --db "${DB}" \
+            --matrix "${MATRIX}" \
+            --gapopen 10 \
+            --gapextend 1 \
+            --outfmt 7 2>&1 > /dev/null | \
+        grep -qx "Unexpected header line on line ${LINE_NUMBER} of score matrix file ${MATRIX}." && \
+        success "${DESCRIPTION}" || \
+            failure "${DESCRIPTION}"
+    rm -f "${MATRIX}"
+    remove_db "${DB}"
+done
+unset DB MATRIX LINES LINE_NUMBER
+
+## a line of white space lists no symbol: it is not a second header
+DESCRIPTION="KI-44: matrix file: lines of white space between and after the rows are accepted"
+DB=$(printf ">s1\nW\n" | make_db prot)
+MATRIX=$(mktemp)
+printf "   A  W\nA  5 -4\n   \nW -4 11\n \t \n" > "${MATRIX}"
+printf ">q1\nW\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --matrix "${MATRIX}" \
+        --gapopen 10 \
+        --gapextend 1 \
+        --outfmt 7 2> /dev/null | \
+    grep -qx "      <score>11</score>" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+rm -f "${MATRIX}"
+remove_db "${DB}"
+unset DB MATRIX
+
 
 #*****************************************************************************#
 #                                                                             #

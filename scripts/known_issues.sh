@@ -88,47 +88,6 @@ remove_db () {
 #                                                                             #
 #*****************************************************************************#
 
-## KI-44: a second header line of a score matrix file is not detected:
-## the column list restarts, but the symbol count accumulates. After
-## the last row, it is silently accepted; before a row, the row needs
-## more scores than the header lists and the error message is
-## misleading (decision Q58: reject the second header line)
-DESCRIPTION="KI-44: matrix file: a second header line after the rows is accepted"
-DB=$(printf ">s1\nW\n" | make_db prot)
-MATRIX=$(mktemp)
-printf "   A  W\nA  5 -4\nW -4 11\n   A  W\n" > "${MATRIX}"
-printf ">q1\nW\n" | \
-    "${SWIPE}" \
-        --db "${DB}" \
-        --matrix "${MATRIX}" \
-        --gapopen 10 \
-        --gapextend 1 \
-        --outfmt 7 2> /dev/null | \
-    grep -qx "      <score>11</score>" && \
-    success "${DESCRIPTION}" || \
-        failure "${DESCRIPTION}"
-rm -f "${MATRIX}"
-remove_db "${DB}"
-unset DB MATRIX
-
-DESCRIPTION="KI-44: matrix file: a second header line before a row gives a parsing error"
-DB=$(printf ">s1\nW\n" | make_db prot)
-MATRIX=$(mktemp)
-printf "   A  W\nA  5 -4\n   A  W\nW -4 11\n" > "${MATRIX}"
-printf ">q1\nW\n" | \
-    "${SWIPE}" \
-        --db "${DB}" \
-        --matrix "${MATRIX}" \
-        --gapopen 10 \
-        --gapextend 1 \
-        --outfmt 7 2>&1 > /dev/null | \
-    grep -qx "Problem parsing score matrix file." && \
-    success "${DESCRIPTION}" || \
-        failure "${DESCRIPTION}"
-rm -f "${MATRIX}"
-remove_db "${DB}"
-unset DB MATRIX
-
 #*****************************************************************************#
 #                                                                             #
 #                               query parsing                                 #

@@ -747,6 +747,42 @@ for LENGTH in '\x7f' '\x84' ; do
 done
 unset DB LENGTH
 
+## KI-46: the entries of the ambiguity table of a nucleotide sequence
+## (a code, a run length, a position) were not checked against the
+## length of the sequence: a corrupted entry wrote past the buffer of
+## the sequence. It is now a fatal error. ACGTNACGTA has one entry, at
+## offset 8 of the sequence file, "f0 00 00 04" (the code of N at
+## position 4): the position becomes 11, past the 10 bases
+DESCRIPTION="KI-46: an ambiguity past the sequence is a fatal error"
+DB=$(printf ">s1\nACGTNACGTA\n" | make_db nucl)
+printf '\x0b' | dd of="${DB}.nsq" bs=1 seek=11 count=1 conv=notrunc 2> /dev/null
+printf ">q1\nACGTNACGTA\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --symtype 0 \
+        --outfmt 8 2>&1 > /dev/null | \
+    grep -qx "Database sequence file ${DB}.nsq is truncated or corrupted." && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+if [[ "${SWIPE_HAS_ASAN}" == "true" ]] ; then
+    DESCRIPTION="KI-46: an ambiguity past the sequence, no heap buffer overflow (ASan)"
+    DB=$(printf ">s1\nACGTNACGTA\n" | make_db nucl)
+    printf '\x0b' | dd of="${DB}.nsq" bs=1 seek=11 count=1 conv=notrunc 2> /dev/null
+    printf ">q1\nACGTNACGTA\n" | \
+        "${SWIPE}" \
+            --db "${DB}" \
+            --symtype 0 \
+            --outfmt 8 2>&1 > /dev/null | \
+        grep -q "ERROR: AddressSanitizer" && \
+        failure "${DESCRIPTION}" || \
+            success "${DESCRIPTION}"
+    remove_db "${DB}"
+    unset DB
+fi
+
 
 #*****************************************************************************#
 #                                                                             #

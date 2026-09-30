@@ -1387,6 +1387,33 @@ rm -rf "${DB_DIR}"
 unset DB_DIR LIST i
 
 
+## an alias file lists at most 256 volumes (MAXVOLUMES): here the same
+## volume, 256 or 257 times
+DESCRIPTION="alias: 256 volumes are accepted"
+DB=$(printf ">s1\nMKVL\n" | make_db prot)
+{ printf "TITLE many\nDBLIST" ; for ((i = 1 ; i <= 256 ; i++)) ; do printf " db" ; done ; printf "\n" ; } > "$(dirname "${DB}")/many.pal"
+printf ">q1\nMKVL\n" | \
+    "${SWIPE}" \
+        --db "$(dirname "${DB}")/many" | \
+    grep -qx "Database size:     1024 residues in 256 sequences" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB i
+
+DESCRIPTION="alias: 257 volumes are too many"
+DB=$(printf ">s1\nMKVL\n" | make_db prot)
+{ printf "TITLE many\nDBLIST" ; for ((i = 1 ; i <= 257 ; i++)) ; do printf " db" ; done ; printf "\n" ; } > "$(dirname "${DB}")/many.pal"
+printf ">q1\nMKVL\n" | \
+    "${SWIPE}" \
+        --db "$(dirname "${DB}")/many" 2>&1 > /dev/null | \
+    grep -qx "Too many database volumes." && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB i
+
+
 #*****************************************************************************#
 #                                                                             #
 #                      alias files: masked databases                          #

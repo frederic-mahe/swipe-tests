@@ -419,6 +419,25 @@ remove_db "${DB}"
 unset DB
 
 
+## the hit list keeps at most one hit per database sequence and
+## query frame (one sequence: six hits)
+DESCRIPTION="blastx: at most one hit per sequence and query frame (6)"
+DB=$(printf ">s1\nMKVLAAGIVGLLLAWSQ\n" | make_db prot)
+printf ">q1\nATGAAAGTTCTTGCTGCTGGAATCGTTGGACTT\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --symtype 2 \
+        --num_descriptions 1000 \
+        --num_alignments 1000 \
+        --evalue 1e9 \
+        --outfmt 8 | \
+    wc -l | \
+    grep -qx " *6" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
 #*****************************************************************************#
 #                                                                             #
 #                         genetic codes and translation                       #

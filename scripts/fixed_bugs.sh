@@ -680,6 +680,109 @@ for SCORE in 99999999999999999999 20x ; do
 done
 unset DB MATRIX SCORE
 
+## KI-44: a second header line of a score matrix file was not
+## detected (the column list restarted, the symbol count accumulated):
+## after the last row it was ignored, before a row it gave "Problem
+## parsing score matrix file.". It is now a fatal error naming the line
+for LINES in "A  5 -4\nW -4 11\n   A  W\n" "A  5 -4\n   A  W\nW -4 11\n" ; do
+    LINE_NUMBER=$(printf "   A  W\n%b" "${LINES}" | grep -n "^   A  W$" | tail -n 1 | cut -d ":" -f 1)
+    DESCRIPTION="KI-44: matrix file: a second header line is a fatal error (line ${LINE_NUMBER})"
+    DB=$(printf ">s1\nW\n" | make_db prot)
+    MATRIX=$(mktemp)
+    printf "   A  W\n%b" "${LINES}" > "${MATRIX}"
+    printf ">q1\nW\n" | \
+        "${SWIPE}" \
+            --db "${DB}" \
+            --matrix "${MATRIX}" \
+            --gapopen 10 \
+            --gapextend 1 \
+            --outfmt 7 2>&1 > /dev/null | \
+        grep -qx "Unexpected header line on line ${LINE_NUMBER} of score matrix file ${MATRIX}." && \
+        success "${DESCRIPTION}" || \
+            failure "${DESCRIPTION}"
+    rm -f "${MATRIX}"
+    remove_db "${DB}"
+done
+unset DB MATRIX LINES LINE_NUMBER
+
+## a line of white space lists no symbol: it is not a second header
+DESCRIPTION="KI-44: matrix file: lines of white space between and after the rows are accepted"
+DB=$(printf ">s1\nW\n" | make_db prot)
+MATRIX=$(mktemp)
+printf "   A  W\nA  5 -4\n   \nW -4 11\n \t \n" > "${MATRIX}"
+printf ">q1\nW\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --matrix "${MATRIX}" \
+        --gapopen 10 \
+        --gapextend 1 \
+        --outfmt 7 2> /dev/null | \
+    grep -qx "      <score>11</score>" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+rm -f "${MATRIX}"
+remove_db "${DB}"
+unset DB MATRIX
+
+## KI-45: the length of a string in a header (binary ASN.1) was not
+## compared with the end of the header: zeros were read past the end,
+## so an overlong title swallowed the rest of the header (the sequence
+## id was lost), and a length of gigabytes exhausted the memory. It is
+## now a fatal error. The length of the title (offset 7 of the header
+## file, 9 for "s1 abcdef") is replaced by 127 (the header has 72
+## bytes), or by the long form 0x84: the next four bytes, "s1 a", are
+## then a length of 1,932,599,393 bytes
+for LENGTH in '\x7f' '\x84' ; do
+    DESCRIPTION="KI-45: a header string longer than the header is a fatal error (${LENGTH})"
+    DB=$(printf ">s1 abcdef\nMKVLAAGIVG\n" | make_db prot)
+    printf '%b' "${LENGTH}" | dd of="${DB}.phr" bs=1 seek=7 count=1 conv=notrunc 2> /dev/null
+    printf ">q1\nMKVLAAGIVG\n" | \
+        "${SWIPE}" \
+            --db "${DB}" \
+            --outfmt 8 2>&1 > /dev/null | \
+        grep -qx "Error parsing binary ASN.1 in database sequence definition." && \
+        success "${DESCRIPTION}" || \
+            failure "${DESCRIPTION}"
+    remove_db "${DB}"
+done
+unset DB LENGTH
+
+## KI-46: the entries of the ambiguity table of a nucleotide sequence
+## (a code, a run length, a position) were not checked against the
+## length of the sequence: a corrupted entry wrote past the buffer of
+## the sequence. It is now a fatal error. ACGTNACGTA has one entry, at
+## offset 8 of the sequence file, "f0 00 00 04" (the code of N at
+## position 4): the position becomes 11, past the 10 bases
+DESCRIPTION="KI-46: an ambiguity past the sequence is a fatal error"
+DB=$(printf ">s1\nACGTNACGTA\n" | make_db nucl)
+printf '\x0b' | dd of="${DB}.nsq" bs=1 seek=11 count=1 conv=notrunc 2> /dev/null
+printf ">q1\nACGTNACGTA\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --symtype 0 \
+        --outfmt 8 2>&1 > /dev/null | \
+    grep -qx "Database sequence file ${DB}.nsq is truncated or corrupted." && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+if [[ "${SWIPE_HAS_ASAN}" == "true" ]] ; then
+    DESCRIPTION="KI-46: an ambiguity past the sequence, no heap buffer overflow (ASan)"
+    DB=$(printf ">s1\nACGTNACGTA\n" | make_db nucl)
+    printf '\x0b' | dd of="${DB}.nsq" bs=1 seek=11 count=1 conv=notrunc 2> /dev/null
+    printf ">q1\nACGTNACGTA\n" | \
+        "${SWIPE}" \
+            --db "${DB}" \
+            --symtype 0 \
+            --outfmt 8 2>&1 > /dev/null | \
+        grep -q "ERROR: AddressSanitizer" && \
+        failure "${DESCRIPTION}" || \
+            success "${DESCRIPTION}"
+    remove_db "${DB}"
+    unset DB
+fi
+
 
 #*****************************************************************************#
 #                                                                             #

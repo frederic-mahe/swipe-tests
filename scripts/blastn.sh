@@ -634,6 +634,25 @@ remove_db "${DB}"
 unset DB
 
 
+## the hit list keeps at most one hit per database sequence and
+## query strand (one sequence: two hits)
+DESCRIPTION="blastn: at most one hit per sequence and query strand (2)"
+DB=$(printf ">s1\nATGAAAGTTCTTGCTGCTGGAATCGTTGGACTTCTTCTTGCTTGGTCTCAA\n" | make_db nucl)
+printf ">q1\nATGAAAGTTCTTGCTGCTGGAATCGTTGGACTT\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --symtype 0 \
+        --num_descriptions 1000 \
+        --num_alignments 1000 \
+        --evalue 1e9 \
+        --outfmt 8 | \
+    wc -l | \
+    grep -qx " *2" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
 #*****************************************************************************#
 #                                                                             #
 #                        match reward and mismatch penalty                    #

@@ -261,6 +261,25 @@ unset DB
 ## see known_issues.sh for --strand 2
 
 
+## the hit list keeps at most one hit per database sequence and
+## pair of query and database frames (one sequence: 36 hits)
+DESCRIPTION="tblastx: at most one hit per sequence and pair of frames (36)"
+DB=$(printf ">s1\nATGAAAGTTCTTGCTGCTGGAATCGTTGGACTTCTTCTTGCTTGGTCTCAA\n" | make_db nucl)
+printf ">q1\nATGAAAGTTCTTGCTGCTGGAATCGTTGGACTT\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --symtype 4 \
+        --num_descriptions 1000 \
+        --num_alignments 1000 \
+        --evalue 1e9 \
+        --outfmt 8 | \
+    wc -l | \
+    grep -qx " *36" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
 #*****************************************************************************#
 #                                                                             #
 #                       genetic codes and statistics                          #

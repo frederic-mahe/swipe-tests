@@ -100,27 +100,6 @@ remove_db () {
 #                                                                             #
 #*****************************************************************************#
 
-## KI-45: the length of a string in a header (binary ASN.1) is not
-## compared with the end of the header: the parser reads zeros past
-## the end, so an overlong title swallows the rest of the header (the
-## sequence id is then lost), and a length of gigabytes exhausts the
-## memory (decision Q63: fatal). The length of the title (offset 7 of
-## the header file, 9 for "s1 abcdef") is replaced by 127, in a header
-## of 72 bytes
-DESCRIPTION="KI-45: a header string longer than the header is accepted (the id is lost)"
-DB=$(printf ">s1 abcdef\nMKVLAAGIVG\n" | make_db prot)
-printf '\x7f' | dd of="${DB}.phr" bs=1 seek=7 count=1 conv=notrunc 2> /dev/null
-printf ">q1\nMKVLAAGIVG\n" | \
-    "${SWIPE}" \
-        --db "${DB}" \
-        --outfmt 8 2> /dev/null | \
-    cut -f 2 | \
-    grep -qx "s1" && \
-    success "${DESCRIPTION}" || \
-        failure "${DESCRIPTION}"
-remove_db "${DB}"
-unset DB
-
 #*****************************************************************************#
 #                                                                             #
 #                               output formats                                #

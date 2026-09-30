@@ -724,6 +724,29 @@ rm -f "${MATRIX}"
 remove_db "${DB}"
 unset DB MATRIX
 
+## KI-45: the length of a string in a header (binary ASN.1) was not
+## compared with the end of the header: zeros were read past the end,
+## so an overlong title swallowed the rest of the header (the sequence
+## id was lost), and a length of gigabytes exhausted the memory. It is
+## now a fatal error. The length of the title (offset 7 of the header
+## file, 9 for "s1 abcdef") is replaced by 127 (the header has 72
+## bytes), or by the long form 0x84: the next four bytes, "s1 a", are
+## then a length of 1,932,599,393 bytes
+for LENGTH in '\x7f' '\x84' ; do
+    DESCRIPTION="KI-45: a header string longer than the header is a fatal error (${LENGTH})"
+    DB=$(printf ">s1 abcdef\nMKVLAAGIVG\n" | make_db prot)
+    printf '%b' "${LENGTH}" | dd of="${DB}.phr" bs=1 seek=7 count=1 conv=notrunc 2> /dev/null
+    printf ">q1\nMKVLAAGIVG\n" | \
+        "${SWIPE}" \
+            --db "${DB}" \
+            --outfmt 8 2>&1 > /dev/null | \
+        grep -qx "Error parsing binary ASN.1 in database sequence definition." && \
+        success "${DESCRIPTION}" || \
+            failure "${DESCRIPTION}"
+    remove_db "${DB}"
+done
+unset DB LENGTH
+
 
 #*****************************************************************************#
 #                                                                             #

@@ -66,6 +66,12 @@ remove_db () {
     rm -rf "$(dirname "${1}")"
 }
 
+## The sanitizer checks below need a binary built with the address
+## sanitizer (for instance with: make DEBUG=1), as in fixed_bugs.sh
+SWIPE_HAS_ASAN=false
+ASAN_OPTIONS=help=1 "${SWIPE}" -h 2>&1 | \
+    grep -q "AddressSanitizer" && SWIPE_HAS_ASAN=true
+
 ## These tests pin the current behaviour of swipe 2.1.1 in situations
 ## that are, or look like, bugs. Each test is expected to fail once
 ## the corresponding issue is fixed: the test should then be updated
@@ -99,6 +105,41 @@ remove_db () {
 #                                  databases                                  #
 #                                                                             #
 #*****************************************************************************#
+
+## KI-46: the entries of the ambiguity table of a nucleotide sequence
+## (a code, a run length, a position) are not checked against the
+## length of the sequence: a corrupted entry writes past the buffer
+## of the sequence (decision Q63: fatal). ACGTNACGTA has one entry, at
+## offset 8 of the sequence file, "f0 00 00 04" (the code of N at
+## position 4): the position becomes 11, past the 10 bases
+if [[ "${SWIPE_HAS_ASAN}" == "true" ]] ; then
+    DESCRIPTION="KI-46: an ambiguity past the sequence overflows the buffer (ASan)"
+    DB=$(printf ">s1\nACGTNACGTA\n" | make_db nucl)
+    printf '\x0b' | dd of="${DB}.nsq" bs=1 seek=11 count=1 conv=notrunc 2> /dev/null
+    printf ">q1\nACGTNACGTA\n" | \
+        "${SWIPE}" \
+            --db "${DB}" \
+            --symtype 0 \
+            --outfmt 8 2>&1 > /dev/null | \
+        grep -q "ERROR: AddressSanitizer: heap-buffer-overflow" && \
+        success "${DESCRIPTION}" || \
+            failure "${DESCRIPTION}"
+    remove_db "${DB}"
+    unset DB
+else
+    DESCRIPTION="KI-46: an ambiguity past the sequence is accepted"
+    DB=$(printf ">s1\nACGTNACGTA\n" | make_db nucl)
+    printf '\x0b' | dd of="${DB}.nsq" bs=1 seek=11 count=1 conv=notrunc 2> /dev/null
+    printf ">q1\nACGTNACGTA\n" | \
+        "${SWIPE}" \
+            --db "${DB}" \
+            --symtype 0 \
+            --outfmt 8 > /dev/null 2>&1 && \
+        success "${DESCRIPTION}" || \
+            failure "${DESCRIPTION}"
+    remove_db "${DB}"
+    unset DB
+fi
 
 #*****************************************************************************#
 #                                                                             #

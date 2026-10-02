@@ -977,6 +977,108 @@ printf ">q1\nMKV\n" | \
 remove_db "${DB}"
 unset DB
 
+## The results do not depend on the number of threads: the database
+## is split in chunks, searched and aligned in parallel, and the hits
+## are sorted afterwards, also when their scores tie. Random sequences
+## (fixed seed) give many weak hits (shown with -e 1000), ten
+## duplicated sequences give ties, and more hits than shown (-v 250)
+## put ties at the cut-off. The lines that vary from run to run
+## (dates, times, speed) and the number of threads are left out of the
+## comparison.
+random_sequences () {
+    # $1 = alphabet, $2 = number of sequences, $3 = length, $4 = prefix
+    local SEQUENCE I J
+    for (( I = 0 ; I < ${2} ; I++ )) ; do
+        SEQUENCE=""
+        for (( J = 0 ; J < ${3} ; J++ )) ; do
+            SEQUENCE="${SEQUENCE}${1:$(( RANDOM % ${#1} )):1}"
+        done
+        printf ">%s%d\n%s\n" "${4}" "${I}" "${SEQUENCE}"
+    done
+}
+
+without_volatile_lines () {
+    grep -v -E \
+         -e "^(Threads|Search started|Search completed|Elapsed|Speed): " \
+         -e "<(threads|searchStarted|searchCompleted|searchElapsedTime|searchSpeed)>"
+}
+
+RANDOM=2026
+PROTEINS=$(random_sequences "ACDEFGHIKLMNPQRSTVWY" 290 60 p)
+NUCLEOTIDES=$(random_sequences "ACGT" 290 90 n)
+## the database: the random sequences, and the first ten twice
+PROT_DB=$({ printf "%s\n" "${PROTEINS}"
+            printf "%s\n" "${PROTEINS}" | head -n 20 | sed "s/^>/>dup_/" ; } | \
+              make_db prot)
+NUCL_DB=$({ printf "%s\n" "${NUCLEOTIDES}"
+            printf "%s\n" "${NUCLEOTIDES}" | head -n 20 | sed "s/^>/>dup_/" ; } | \
+              make_db nucl)
+PROT_QUERY=$(mktemp)
+NUCL_QUERY=$(mktemp)
+## the queries: two database sequences, and two random sequences
+{ printf "%s\n" "${PROTEINS}" | head -n 4
+  random_sequences "ACDEFGHIKLMNPQRSTVWY" 2 50 q ; } > "${PROT_QUERY}"
+{ printf "%s\n" "${NUCLEOTIDES}" | head -n 4
+  random_sequences "ACGT" 2 75 q ; } > "${NUCL_QUERY}"
+REFERENCE=$(mktemp)
+
+## symbol type, database, query, output formats
+for SEARCH in "blastp ${PROT_DB} ${PROT_QUERY} 0 7 8 9 99" \
+              "blastn ${NUCL_DB} ${NUCL_QUERY} 0 8" \
+              "blastx ${PROT_DB} ${NUCL_QUERY} 0 8" \
+              "tblastn ${NUCL_DB} ${PROT_QUERY} 0 8" \
+              "tblastx ${NUCL_DB} ${NUCL_QUERY} 0 8" \
+              "sound ${PROT_DB} ${PROT_QUERY} 0 8" ; do
+    # shellcheck disable=SC2086  # split on purpose
+    set -- ${SEARCH}
+    SYMTYPE="${1}"
+    DB="${2}"
+    QUERY="${3}"
+    shift 3
+
+    ## the comparisons below are worth nothing without hits
+    DESCRIPTION="--num_threads: ${SYMTYPE} reference search reports hits"
+    "${SWIPE}" \
+        --db "${DB}" \
+        --query "${QUERY}" \
+        --symtype "${SYMTYPE}" \
+        --evalue 1000 \
+        --outfmt 8 | \
+        awk 'END { exit (NR < 20) }' && \
+        success "${DESCRIPTION}" || \
+            failure "${DESCRIPTION}"
+
+    for OUTFMT in "${@}" ; do
+        "${SWIPE}" \
+            --db "${DB}" \
+            --query "${QUERY}" \
+            --symtype "${SYMTYPE}" \
+            --evalue 1000 \
+            --outfmt "${OUTFMT}" \
+            --num_threads 1 | \
+            without_volatile_lines > "${REFERENCE}"
+        for THREADS in 3 16 ; do
+            DESCRIPTION="--num_threads: ${SYMTYPE} -m ${OUTFMT}, same results with 1 and ${THREADS} threads"
+            "${SWIPE}" \
+                --db "${DB}" \
+                --query "${QUERY}" \
+                --symtype "${SYMTYPE}" \
+                --evalue 1000 \
+                --outfmt "${OUTFMT}" \
+                --num_threads "${THREADS}" | \
+                without_volatile_lines | \
+                cmp -s "${REFERENCE}" - && \
+                success "${DESCRIPTION}" || \
+                    failure "${DESCRIPTION}"
+        done
+    done
+done
+rm -f "${REFERENCE}" "${PROT_QUERY}" "${NUCL_QUERY}"
+remove_db "${PROT_DB}"
+remove_db "${NUCL_DB}"
+unset PROTEINS NUCLEOTIDES PROT_DB NUCL_DB PROT_QUERY NUCL_QUERY \
+      REFERENCE SEARCH SYMTYPE DB QUERY OUTFMT THREADS
+
 
 #*****************************************************************************#
 #                                                                             #

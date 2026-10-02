@@ -959,10 +959,10 @@ for OUTFMT in 0 7 8 9 ; do
     DB_DIR=$(make_db_versions "${PROTEINS}" prot)
     [[ "$(printf ">q1\nMKVLAAGIVGLLLAW\n" | \
           "${SWIPE}" --db "${DB_DIR}/v4" --outfmt "${OUTFMT}" 2>&1 | \
-          grep -v -E "^(Database file|Search (started|completed)|Speed|# Database):")" == \
+          grep -v -E "^(Database (file|time)|Search (started|completed)|Elapsed|Speed|# Database):")" == \
        "$(printf ">q1\nMKVLAAGIVGLLLAW\n" | \
           "${SWIPE}" --db "${DB_DIR}/v5" --outfmt "${OUTFMT}" 2>&1 | \
-          grep -v -E "^(Database file|Search (started|completed)|Speed|# Database):")" ]] && \
+          grep -v -E "^(Database (file|time)|Search (started|completed)|Elapsed|Speed|# Database):")" ]] && \
         success "${DESCRIPTION}" || \
             failure "${DESCRIPTION}"
     rm -rf "${DB_DIR}"

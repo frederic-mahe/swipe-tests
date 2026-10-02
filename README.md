@@ -35,6 +35,15 @@ To run a single test script:
 bash ./scripts/blastp.sh ../swipe/swipe
 ```
 
+Large databases (more than 2^31 residues in a volume, offsets above
+2^31, more than 2^32 residues in all) are tested by a separate script,
+not run by `run_all_tests.sh`: it writes about 9 GB of temporary files
+and takes a few minutes (the optional second argument is the directory
+for the temporary files, `${TMPDIR}` by default):
+```sh
+bash ./scripts/large_databases.sh ../swipe/swipe [directory]
+```
+
 Requirements:
 - bash version 4 or higher,
 - [makeblastdb](https://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/)

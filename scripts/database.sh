@@ -1416,6 +1416,172 @@ unset DB i
 
 #*****************************************************************************#
 #                                                                             #
+#              multi-volume databases (makeblastdb -max_file_sz)              #
+#                                                                             #
+#*****************************************************************************#
+
+## makeblastdb splits a large database into volumes (db.00, db.01,
+## ...) listed by an alias file (db.pal or db.nal). The same sequences
+## in one volume or in several give the same results: each search
+## below runs in the directory of its database, so that both report
+## the same database name. Sequence ids are parsed (-parse_seqids):
+## ordinal ids (BL_ORD_ID) are relative to each volume.
+random_sequences () {
+    # $1 = alphabet, $2 = number of sequences, $3 = length, $4 = prefix
+    local SEQUENCE I J
+    for (( I = 0 ; I < ${2} ; I++ )) ; do
+        SEQUENCE=""
+        for (( J = 0 ; J < ${3} ; J++ )) ; do
+            SEQUENCE="${SEQUENCE}${1:$(( RANDOM % ${#1} )):1}"
+        done
+        printf ">%s%d\n%s\n" "${4}" "${I}" "${SEQUENCE}"
+    done
+}
+
+without_volatile_lines () {
+    grep -v -E \
+         -e "^(Threads|Search started|Search completed|Elapsed|Speed): " \
+         -e "<(threads|searchStarted|searchCompleted|searchElapsedTime|searchSpeed)>"
+}
+
+## the number of volumes listed by the alias file of a database
+count_volumes () {
+    grep "^DBLIST" "${1}" | wc -w | awk '{ print $1 - 1 }'
+}
+
+RANDOM=4096
+PROTEINS=$(random_sequences "ACDEFGHIKLMNPQRSTVWY" 300 60 "sp|P")
+NUCLEOTIDES=$(random_sequences "ACGT" 300 90 "gb|N")
+PROT_ONE=$(printf "%s\n" "${PROTEINS}" | make_db prot -parse_seqids)
+PROT_SPLIT=$(printf "%s\n" "${PROTEINS}" | \
+                 make_db prot -parse_seqids -max_file_sz 4000)
+NUCL_ONE=$(printf "%s\n" "${NUCLEOTIDES}" | make_db nucl -parse_seqids)
+NUCL_SPLIT=$(printf "%s\n" "${NUCLEOTIDES}" | \
+                 make_db nucl -parse_seqids -max_file_sz 4000)
+PROT_QUERY=$(mktemp)
+NUCL_QUERY=$(mktemp)
+## the queries: a database sequence, and two random sequences
+{ printf "%s\n" "${PROTEINS}" | head -n 2
+  random_sequences "ACDEFGHIKLMNPQRSTVWY" 2 50 q ; } > "${PROT_QUERY}"
+{ printf "%s\n" "${NUCLEOTIDES}" | head -n 2
+  random_sequences "ACGT" 2 75 q ; } > "${NUCL_QUERY}"
+REFERENCE=$(mktemp)
+
+## the comparisons below are worth nothing with a single volume
+DESCRIPTION="multi-volume: makeblastdb wrote several protein volumes"
+[[ $(count_volumes "${PROT_SPLIT}.pal") -ge 3 ]] && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+
+DESCRIPTION="multi-volume: makeblastdb wrote several nucleotide volumes"
+[[ $(count_volumes "${NUCL_SPLIT}.nal") -ge 3 ]] && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+
+DESCRIPTION="multi-volume: protein dump is the same as with one volume"
+(cd "$(dirname "${PROT_ONE}")" && \
+     "${SWIPE}" \
+         --db db \
+         --dump 1 < /dev/null) > "${REFERENCE}"
+(cd "$(dirname "${PROT_SPLIT}")" && \
+     "${SWIPE}" \
+         --db db \
+         --dump 1 < /dev/null) | \
+    cmp -s "${REFERENCE}" - && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+
+DESCRIPTION="multi-volume: nucleotide dump is the same as with one volume"
+(cd "$(dirname "${NUCL_ONE}")" && \
+     "${SWIPE}" \
+         --db db \
+         --symtype 0 \
+         --dump 1 < /dev/null) > "${REFERENCE}"
+(cd "$(dirname "${NUCL_SPLIT}")" && \
+     "${SWIPE}" \
+         --db db \
+         --symtype 0 \
+         --dump 1 < /dev/null) | \
+    cmp -s "${REFERENCE}" - && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+
+## symbol type, databases (one volume, several), prefix of the
+## database sequence ids, query, output formats
+for SEARCH in "blastp ${PROT_ONE} ${PROT_SPLIT} sp|P ${PROT_QUERY} 0 8 99" \
+              "blastn ${NUCL_ONE} ${NUCL_SPLIT} gb|N ${NUCL_QUERY} 0 8" \
+              "blastx ${PROT_ONE} ${PROT_SPLIT} sp|P ${NUCL_QUERY} 8" \
+              "tblastn ${NUCL_ONE} ${NUCL_SPLIT} gb|N ${PROT_QUERY} 8" \
+              "tblastx ${NUCL_ONE} ${NUCL_SPLIT} gb|N ${NUCL_QUERY} 8" ; do
+    # shellcheck disable=SC2086  # split on purpose
+    set -- ${SEARCH}
+    SYMTYPE="${1}"
+    ONE="${2}"
+    SPLIT="${3}"
+    SUBJECTS="${4}"
+    QUERY="${5}"
+    shift 5
+    for OUTFMT in "${@}" ; do
+        (cd "$(dirname "${ONE}")" && \
+             "${SWIPE}" \
+                 --db db \
+                 --query "${QUERY}" \
+                 --symtype "${SYMTYPE}" \
+                 --evalue 1000 \
+                 --outfmt "${OUTFMT}") | \
+            without_volatile_lines > "${REFERENCE}"
+        ## a search with hits, so that the comparison is not vacuous
+        DESCRIPTION="multi-volume: ${SYMTYPE} -m ${OUTFMT} reference search reports hits"
+        grep -F "${SUBJECTS}" "${REFERENCE}" | \
+            awk 'END { exit (NR < 20) }' && \
+            success "${DESCRIPTION}" || \
+                failure "${DESCRIPTION}"
+        ## several threads: the chunks are cut within each volume
+        for THREADS in 1 4 ; do
+            DESCRIPTION="multi-volume: ${SYMTYPE} -m ${OUTFMT}, same results as one volume (${THREADS} threads)"
+            (cd "$(dirname "${SPLIT}")" && \
+                 "${SWIPE}" \
+                     --db db \
+                     --query "${QUERY}" \
+                     --symtype "${SYMTYPE}" \
+                     --evalue 1000 \
+                     --outfmt "${OUTFMT}" \
+                     --num_threads "${THREADS}") | \
+                without_volatile_lines | \
+                cmp -s "${REFERENCE}" - && \
+                success "${DESCRIPTION}" || \
+                    failure "${DESCRIPTION}"
+        done
+    done
+done
+rm -f "${REFERENCE}" "${PROT_QUERY}" "${NUCL_QUERY}"
+remove_db "${PROT_ONE}"
+remove_db "${PROT_SPLIT}"
+remove_db "${NUCL_ONE}"
+remove_db "${NUCL_SPLIT}"
+unset PROTEINS NUCLEOTIDES PROT_ONE PROT_SPLIT NUCL_ONE NUCL_SPLIT \
+      PROT_QUERY NUCL_QUERY REFERENCE SEARCH SYMTYPE ONE SPLIT SUBJECTS \
+      QUERY OUTFMT THREADS
+
+## makeblastdb writes more volumes than swipe reads (one per sequence
+## here, with the files of the parsed ids): the limit of 256 volumes
+## (MAXVOLUMES) is reported
+DESCRIPTION="multi-volume: makeblastdb database of 300 volumes is rejected"
+RANDOM=300
+DB=$(random_sequences "ACDEFGHIKLMNPQRSTVWY" 300 60 "sp|P" | \
+         make_db prot -parse_seqids -max_file_sz 1000)
+printf ">q1\nMKVL\n" | \
+    "${SWIPE}" \
+        --db "${DB}" 2>&1 > /dev/null | \
+    grep -qx "Too many database volumes." && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+
+#*****************************************************************************#
+#                                                                             #
 #                      alias files: masked databases                          #
 #                                                                             #
 #*****************************************************************************#

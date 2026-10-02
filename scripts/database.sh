@@ -1563,13 +1563,33 @@ unset PROTEINS NUCLEOTIDES PROT_ONE PROT_SPLIT NUCL_ONE NUCL_SPLIT \
       PROT_QUERY NUCL_QUERY REFERENCE SEARCH SYMTYPE ONE SPLIT SUBJECTS \
       QUERY OUTFMT THREADS
 
-## makeblastdb writes more volumes than swipe reads (one per sequence
-## here, with the files of the parsed ids): the limit of 256 volumes
-## (MAXVOLUMES) is reported
+## makeblastdb writes more volumes than swipe reads: the limit of 256
+## volumes (MAXVOLUMES) is reported. Each sequence (1,500 residues) is
+## larger than the maximal file size (1,000 bytes), so that each
+## volume holds a single sequence with every version of makeblastdb
+## (how much of the other files counts towards that size differs:
+## BLAST+ 2.12, Ubuntu 24.04 in the CI, wrote fewer than 256 volumes
+## of 60-residue sequences with their ids parsed)
+DB=$(awk 'BEGIN {
+              srand(300)
+              alphabet = "ACDEFGHIKLMNPQRSTVWY"
+              for (i = 0 ; i < 300 ; i++) {
+                  sequence = ""
+                  for (j = 0 ; j < 1500 ; j++) {
+                      sequence = sequence substr(alphabet, int(rand() * 20) + 1, 1)
+                  }
+                  printf ">p%d\n%s\n", i, sequence
+              }
+          }' | \
+         make_db prot -max_file_sz 1000)
+
+## the test below is worth nothing with 256 volumes or fewer
+DESCRIPTION="multi-volume: makeblastdb wrote more than 256 volumes"
+[[ $(count_volumes "${DB}.pal") -gt 256 ]] && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+
 DESCRIPTION="multi-volume: makeblastdb database of 300 volumes is rejected"
-RANDOM=300
-DB=$(random_sequences "ACDEFGHIKLMNPQRSTVWY" 300 60 "sp|P" | \
-         make_db prot -parse_seqids -max_file_sz 1000)
 printf ">q1\nMKVL\n" | \
     "${SWIPE}" \
         --db "${DB}" 2>&1 > /dev/null | \

@@ -1475,6 +1475,382 @@ unset DB i
 
 #*****************************************************************************#
 #                                                                             #
+#                    hits with the best scores (--show_best)                  #
+#                                                                             #
+#*****************************************************************************#
+
+## new in 2.2.0 (GitHub #37, PR #38): --show_best N keeps only the
+## hits whose score is one of the N highest scores; the hits are
+## still limited by -v and -b. 0 (the default) keeps all hits
+
+## database with four hits for the query MKVW, with three different
+## scores: s1 and s3 (25), s2 (16) and s4 (14)
+make_best_scores_db () {
+    printf ">s1\nMKVW\n>s2\nMKVY\n>s3\nMKVW\n>s4\nMKVA\n" | \
+        make_db prot -parse_seqids
+}
+
+DESCRIPTION="--show_best 1 lists the hits with the best score"
+DB=$(make_best_scores_db)
+printf ">q1\nMKVW\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --show_best 1 | \
+    grep -c "^lcl|s[13] " | \
+    grep -qx "2" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="--show_best 1 lists only the hits with the best score"
+DB=$(make_best_scores_db)
+printf ">q1\nMKVW\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --show_best 1 | \
+    grep -c "^lcl|" | \
+    grep -qx "2" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="--show_best 1 aligns only the hits with the best score"
+DB=$(make_best_scores_db)
+printf ">q1\nMKVW\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --show_best 1 | \
+    grep -c "^>lcl|" | \
+    grep -qx "2" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="--show_best 1 (tabular output)"
+DB=$(make_best_scores_db)
+printf ">q1\nMKVW\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --show_best 1 \
+        --outfmt 8 | \
+    cut -f 2 | \
+    sort | \
+    tr "\n" " " | \
+    grep -qx "lcl|s1 lcl|s3 " && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="--show_best 1 (XML output, hit count)"
+DB=$(make_best_scores_db)
+printf ">q1\nMKVW\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --show_best 1 \
+        --outfmt 7 | \
+    grep -qx "    <hitcount>2</hitcount>" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="--show_best 1 (XML output, scores)"
+DB=$(make_best_scores_db)
+printf ">q1\nMKVW\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --show_best 1 \
+        --outfmt 7 | \
+    grep "<score>" | \
+    tr -d " \n" | \
+    grep -qx "<score>25</score><score>25</score>" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="--show_best 1 (ParAlign XML output, number of hits shown)"
+DB=$(make_best_scores_db)
+printf ">q1\nMKVW\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --show_best 1 \
+        --outfmt 99 | \
+    grep -qx "$(printf "\t\t\t\t<shownCount>2</shownCount>")" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+## the total number of hits found is not limited
+DESCRIPTION="--show_best 1 (ParAlign XML output, total number of hits)"
+DB=$(make_best_scores_db)
+printf ">q1\nMKVW\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --show_best 1 \
+        --outfmt 99 | \
+    grep -qx "$(printf "\t\t\t\t<totalCount>4</totalCount>")" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="--show_best 2 lists the hits with the two best scores"
+DB=$(make_best_scores_db)
+printf ">q1\nMKVW\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --show_best 2 \
+        --outfmt 8 | \
+    cut -f 2 | \
+    sort | \
+    tr "\n" " " | \
+    grep -qx "lcl|s1 lcl|s2 lcl|s3 " && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="--show_best 3 lists all hits (three different scores)"
+DB=$(make_best_scores_db)
+printf ">q1\nMKVW\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --show_best 3 \
+        --outfmt 8 | \
+    wc -l | \
+    grep -qx " *4" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="--show_best greater than the number of scores lists all hits"
+DB=$(make_best_scores_db)
+printf ">q1\nMKVW\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --show_best 10 \
+        --outfmt 8 | \
+    wc -l | \
+    grep -qx " *4" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="--show_best 0 lists all hits"
+DB=$(make_best_scores_db)
+printf ">q1\nMKVW\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --show_best 0 \
+        --outfmt 8 | \
+    wc -l | \
+    grep -qx " *4" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="--show_best: the list of hits is still limited by --num_descriptions"
+DB=$(make_best_scores_db)
+printf ">q1\nMKVW\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --show_best 1 \
+        --num_descriptions 1 2> /dev/null | \
+    grep -c "^lcl|" | \
+    grep -qx "1" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="--show_best: alignments are still limited by --num_alignments"
+DB=$(make_best_scores_db)
+printf ">q1\nMKVW\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --show_best 1 \
+        --num_alignments 1 2> /dev/null | \
+    grep -c "^>lcl|" | \
+    grep -qx "1" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="--show_best: several queries"
+DB=$(make_best_scores_db)
+printf ">q1\nMKVW\n>q2\nMKVY\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --show_best 1 \
+        --outfmt 8 | \
+    cut -f 1,2 | \
+    sort | \
+    tr "\t\n" ": " | \
+    grep -qx "q1:lcl|s1 q1:lcl|s3 q2:lcl|s2 " && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+## the list of hits holds the best hits, as many as the largest of
+## --num_descriptions and --num_alignments: when it is full, a warning
+## says that hits with one of the best scores were left out
+DESCRIPTION="--show_best: no warning when all the hits fit in the list"
+DB=$(make_best_scores_db)
+printf ">q1\nMKVW\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --show_best 1 2>&1 > /dev/null | \
+    grep -q "." && \
+    failure "${DESCRIPTION}" || \
+        success "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="--show_best: warning when a hit with the best score is left out"
+DB=$(make_best_scores_db)
+printf ">q1\nMKVW\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --show_best 1 \
+        --num_descriptions 1 \
+        --num_alignments 1 2>&1 > /dev/null | \
+    grep -q "^Warning: " && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="--show_best: the warning names the query"
+DB=$(make_best_scores_db)
+printf ">q1 first query\nMKVW\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --show_best 1 \
+        --num_descriptions 1 \
+        --num_alignments 1 2>&1 > /dev/null | \
+    grep -q "query q1:" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="--show_best: the hits are shown despite the warning"
+DB=$(make_best_scores_db)
+printf ">q1\nMKVW\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --show_best 1 \
+        --num_descriptions 1 \
+        --num_alignments 1 \
+        --outfmt 8 2> /dev/null | \
+    wc -l | \
+    grep -qx " *1" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+## the list is full (s1, s3), but the hit left out (s2) has a lower
+## score
+DESCRIPTION="--show_best: no warning when the hits left out have lower scores"
+DB=$(make_best_scores_db)
+printf ">q1\nMKVW\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --show_best 1 \
+        --num_descriptions 2 \
+        --num_alignments 2 2>&1 > /dev/null | \
+    grep -q "." && \
+    failure "${DESCRIPTION}" || \
+        success "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+## the list is full (s1, s3, s2) and holds two different scores: the
+## hit left out (s4) has the third best score
+DESCRIPTION="--show_best: warning when a hit with the last best score is left out"
+DB=$(make_best_scores_db)
+printf ">q1\nMKVW\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --show_best 3 \
+        --num_descriptions 3 \
+        --num_alignments 3 2>&1 > /dev/null | \
+    grep -q "^Warning: " && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="--show_best: no warning without --show_best"
+DB=$(make_best_scores_db)
+printf ">q1\nMKVW\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --num_descriptions 1 \
+        --num_alignments 1 2>&1 > /dev/null | \
+    grep -q "." && \
+    failure "${DESCRIPTION}" || \
+        success "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+## the hits beyond the best scores are not aligned: with -v 300 -b 300
+## and one hit with the best score among 300, only one is aligned
+DESCRIPTION="--show_best: one best hit among many"
+DB=$( (printf ">best\nMKVW\n" ;
+       for ((i = 1 ; i <= 299 ; i++)) ; do
+           printf ">s%d\nMKVA\n" ${i}
+       done) | make_db prot -parse_seqids)
+printf ">q1\nMKVW\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --show_best 1 \
+        --num_descriptions 300 \
+        --num_alignments 300 \
+        --outfmt 8 | \
+    cut -f 2 | \
+    tr "\n" " " | \
+    grep -qx "lcl|best " && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB i
+
+## many ties: all of them are shown when -v and -b are large enough
+DESCRIPTION="--show_best: 300 hits with the best score"
+DB=$( (for ((i = 1 ; i <= 300 ; i++)) ; do
+           printf ">s%d\nMKVW\n" ${i}
+       done ;
+       printf ">worse\nMKVA\n") | make_db prot -parse_seqids)
+printf ">q1\nMKVW\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --show_best 1 \
+        --num_descriptions 1000 \
+        --num_alignments 1000 \
+        --outfmt 8 | \
+    wc -l | \
+    grep -qx " *300" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB i
+
+
+#*****************************************************************************#
+#                                                                             #
 #                                  threads                                    #
 #                                                                             #
 #*****************************************************************************#

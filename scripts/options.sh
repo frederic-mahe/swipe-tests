@@ -2170,6 +2170,98 @@ for OPTION in --num_descriptions --num_alignments --evalue --minevalue \
 done
 unset OPTION
 
+## --show_best (new in 2.2.0, GitHub #37): only the hits with one of
+## the N best scores (see blastp.sh); 0 (the default) shows all hits
+DESCRIPTION="--show_best is listed in the help message"
+"${SWIPE}" --help 2> /dev/null | \
+    grep -q "^      --show_best=NUM " && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+
+DESCRIPTION="--show_best 2 is reported as \"Best scores shown: 2\""
+DB=$(printf ">s1\nMKV\n" | make_db prot)
+printf ">q1\nMKV\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --show_best 2 | \
+    grep -qxF "Best scores shown: 2" && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="default parameter block does not show the number of best scores"
+DB=$(printf ">s1\nMKV\n" | make_db prot)
+printf ">q1\nMKV\n" | \
+    "${SWIPE}" \
+        --db "${DB}" | \
+    grep -q "^Best scores shown:" && \
+    failure "${DESCRIPTION}" || \
+        success "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="--show_best 0 is not reported in the parameter block"
+DB=$(printf ">s1\nMKV\n" | make_db prot)
+printf ">q1\nMKV\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --show_best 0 | \
+    grep -q "^Best scores shown:" && \
+    failure "${DESCRIPTION}" || \
+        success "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+DESCRIPTION="--show_best 0 is accepted"
+DB=$(printf ">s1\nMKV\n" | make_db prot)
+printf ">q1\nMKV\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --show_best 0 > /dev/null 2>&1 && \
+    success "${DESCRIPTION}" || \
+        failure "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+for VALUE in -1 abc 2x "" ; do
+    DESCRIPTION="--show_best rejects \"${VALUE}\""
+    DB=$(printf ">s1\nMKV\n" | make_db prot)
+    printf ">q1\nMKV\n" | \
+        "${SWIPE}" \
+            --db "${DB}" \
+            --show_best "${VALUE}" 2>&1 > /dev/null | \
+        grep -qx "Illegal number of best scores specified." && \
+        success "${DESCRIPTION}" || \
+            failure "${DESCRIPTION}"
+    remove_db "${DB}"
+    unset DB
+done
+unset VALUE
+
+DESCRIPTION="--show_best requires a value"
+DB=$(printf ">s1\nMKV\n" | make_db prot)
+printf ">q1\nMKV\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        --show_best > /dev/null 2>&1 && \
+    failure "${DESCRIPTION}" || \
+        success "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
+## no short option: blastall's -B is the number of concatenated queries
+DESCRIPTION="--show_best has no short option -B"
+DB=$(printf ">s1\nMKV\n" | make_db prot)
+printf ">q1\nMKV\n" | \
+    "${SWIPE}" \
+        --db "${DB}" \
+        -B 1 > /dev/null 2>&1 && \
+    failure "${DESCRIPTION}" || \
+        success "${DESCRIPTION}"
+remove_db "${DB}"
+unset DB
+
 
 #*****************************************************************************#
 #                                                                             #
